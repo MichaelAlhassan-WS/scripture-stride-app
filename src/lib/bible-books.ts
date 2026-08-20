@@ -1,0 +1,82 @@
+export type BibleBook = {
+  name: string;
+  file: string;
+  chapters: number;
+  testament: "OT" | "NT";
+};
+
+export const BIBLE_BOOKS: BibleBook[] = [
+  { name: "Genesis", file: "Genesis", chapters: 50, testament: "OT" },
+  { name: "Exodus", file: "Exodus", chapters: 40, testament: "OT" },
+  { name: "Leviticus", file: "Leviticus", chapters: 27, testament: "OT" },
+  { name: "Numbers", file: "Numbers", chapters: 36, testament: "OT" },
+  { name: "Deuteronomy", file: "Deuteronomy", chapters: 34, testament: "OT" },
+  { name: "Joshua", file: "Joshua", chapters: 24, testament: "OT" },
+  { name: "Judges", file: "Judges", chapters: 21, testament: "OT" },
+  { name: "Ruth", file: "Ruth", chapters: 4, testament: "OT" },
+  { name: "1 Samuel", file: "1Samuel", chapters: 31, testament: "OT" },
+  { name: "2 Samuel", file: "2Samuel", chapters: 24, testament: "OT" },
+  { name: "1 Kings", file: "1Kings", chapters: 22, testament: "OT" },
+  { name: "2 Kings", file: "2Kings", chapters: 25, testament: "OT" },
+  { name: "1 Chronicles", file: "1Chronicles", chapters: 29, testament: "OT" },
+  { name: "2 Chronicles", file: "2Chronicles", chapters: 36, testament: "OT" },
+  { name: "Ezra", file: "Ezra", chapters: 10, testament: "OT" },
+  { name: "Nehemiah", file: "Nehemiah", chapters: 13, testament: "OT" },
+  { name: "Esther", file: "Esther", chapters: 10, testament: "OT" },
+  { name: "Job", file: "Job", chapters: 42, testament: "OT" },
+  { name: "Psalms", file: "Psalms", chapters: 150, testament: "OT" },
+  { name: "Proverbs", file: "Proverbs", chapters: 31, testament: "OT" },
+  { name: "Ecclesiastes", file: "Ecclesiastes", chapters: 12, testament: "OT" },
+  { name: "Song of Solomon", file: "SongofSolomon", chapters: 8, testament: "OT" },
+  { name: "Isaiah", file: "Isaiah", chapters: 66, testament: "OT" },
+  { name: "Jeremiah", file: "Jeremiah", chapters: 52, testament: "OT" },
+  { name: "Lamentations", file: "Lamentations", chapters: 5, testament: "OT" },
+  { name: "Ezekiel", file: "Ezekiel", chapters: 48, testament: "OT" },
+  { name: "Daniel", file: "Daniel", chapters: 12, testament: "OT" },
+  { name: "Hosea", file: "Hosea", chapters: 14, testament: "OT" },
+  { name: "Joel", file: "Joel", chapters: 3, testament: "OT" },
+  { name: "Amos", file: "Amos", chapters: 9, testament: "OT" },
+  { name: "Obadiah", file: "Obadiah", chapters: 1, testament: "OT" },
+  { name: "Jonah", file: "Jonah", chapters: 4, testament: "OT" },
+  { name: "Micah", file: "Micah", chapters: 7, testament: "OT" },
+  { name: "Nahum", file: "Nahum", chapters: 3, testament: "OT" },
+  { name: "Habakkuk", file: "Habakkuk", chapters: 3, testament: "OT" },
+  { name: "Zephaniah", file: "Zephaniah", chapters: 3, testament: "OT" },
+  { name: "Haggai", file: "Haggai", chapters: 2, testament: "OT" },
+  { name: "Zechariah", file: "Zechariah", chapters: 14, testament: "OT" },
+  { name: "Malachi", file: "Malachi", chapters: 4, testament: "OT" },
+  { name: "Matthew", file: "Matthew", chapters: 28, testament: "NT" },
+  { name: "Mark", file: "Mark", chapters: 16, testament: "NT" },
+  { name: "Luke", file: "Luke", chapters: 24, testament: "NT" },
+  { name: "John", file: "John", chapters: 21, testament: "NT" },
+  { name: "Acts", file: "Acts", chapters: 28, testament: "NT" },
+  { name: "Romans", file: "Romans", chapters: 16, testament: "NT" },
+  { name: "1 Corinthians", file: "1Corinthians", chapters: 16, testament: "NT" },
+  { name: "2 Corinthians", file: "2Corinthians", chapters: 13, testament: "NT" },
+  { name: "Galatians", file: "Galatians", chapters: 6, testament: "NT" },
+  { name: "Ephesians", file: "Ephesians", chapters: 6, testament: "NT" },
+  { name: "Philippians", file: "Philippians", chapters: 4, testament: "NT" },
+  { name: "Colossians", file: "Colossians", chapters: 4, testament: "NT" },
+  { name: "1 Thessalonians", file: "1Thessalonians", chapters: 5, testament: "NT" },
+  { name: "2 Thessalonians", file: "2Thessalonians", chapters: 3, testament: "NT" },
+  { name: "1 Timothy", file: "1Timothy", chapters: 6, testament: "NT" },
+  { name: "2 Timothy", file: "2Timothy", chapters: 4, testament: "NT" },
+  { name: "Titus", file: "Titus", chapters: 3, testament: "NT" },
+  { name: "Philemon", file: "Philemon", chapters: 1, testament: "NT" },
+  { name: "Hebrews", file: "Hebrews", chapters: 13, testament: "NT" },
+  { name: "James", file: "James", chapters: 5, testament: "NT" },
+  { name: "1 Peter", file: "1Peter", chapters: 5, testament: "NT" },
+  { name: "2 Peter", file: "2Peter", chapters: 3, testament: "NT" },
+  { name: "1 John", file: "1John", chapters: 5, testament: "NT" },
+  { name: "2 John", file: "2John", chapters: 1, testament: "NT" },
+  { name: "3 John", file: "3John", chapters: 1, testament: "NT" },
+  { name: "Jude", file: "Jude", chapters: 1, testament: "NT" },
+  { name: "Revelation", file: "Revelation", chapters: 22, testament: "NT" },
+];
+
+export function findBook(name: string): BibleBook | undefined {
+  const target = name.trim().toLowerCase();
+  return BIBLE_BOOKS.find(
+    (b) => b.name.toLowerCase() === target || b.file.toLowerCase() === target,
+  );
+}
