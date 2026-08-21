@@ -49,17 +49,22 @@ function LeaderPage() {
         const [membersRes, logsRes] = await Promise.all([
           supabase
             .from("group_members")
-            .select("user_id, profiles:user_id(full_name, email)")
+            .select("user_id")
             .eq("group_id", group.id),
           supabase.from("study_logs").select("user_id, studied_on, book, chapter"),
         ]);
         const members = membersRes.data ?? [];
         const ids = new Set(members.map((m) => m.user_id));
         const logs = (logsRes.data ?? []).filter((l) => ids.has(l.user_id));
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", [...ids]);
+        const profileById = new Map((profileRows ?? []).map((p) => [p.id, p]));
 
         const stats = members.map((member) => {
           const dates = logs.filter((l) => l.user_id === member.user_id).map((l) => l.studied_on);
-          const profile = member.profiles as { full_name: string; email: string } | null;
+          const profile = profileById.get(member.user_id);
           const weekDays = week.filter((d) => dates.includes(d)).length;
           return {
             userId: member.user_id,

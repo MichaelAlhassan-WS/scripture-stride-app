@@ -55,20 +55,24 @@ function GroupsPage() {
         const [membersRes, logsRes] = await Promise.all([
           supabase
             .from("group_members")
-            .select("user_id, is_leader, profiles:user_id(full_name)")
+            .select("user_id, is_leader")
             .eq("group_id", group.id),
           supabase.from("study_logs").select("user_id, studied_on"),
         ]);
         const members = membersRes.data ?? [];
         const memberIds = new Set(members.map((m) => m.user_id));
         const logs = (logsRes.data ?? []).filter((l) => memberIds.has(l.user_id));
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", [...memberIds]);
+        const nameById = new Map((profileRows ?? []).map((p) => [p.id, p.full_name]));
 
         const stats: MemberStat[] = members.map((member) => {
           const dates = logs.filter((l) => l.user_id === member.user_id).map((l) => l.studied_on);
-          const profile = member.profiles as { full_name: string } | null;
           return {
             userId: member.user_id,
-            name: profile?.full_name || "Member",
+            name: nameById.get(member.user_id) || "Member",
             doneToday: dates.includes(todayKey()),
             streak: currentStreak(dates),
             weekDays: week.filter((d) => dates.includes(d)).length,

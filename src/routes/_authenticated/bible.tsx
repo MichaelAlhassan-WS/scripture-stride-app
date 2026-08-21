@@ -24,8 +24,8 @@ type BibleSearch = { book: string; chapter: number };
 
 export const Route = createFileRoute("/_authenticated/bible")({
   validateSearch: (search: Record<string, unknown>): BibleSearch => ({
-    book: findBook(String(search.book ?? "John"))?.name ?? "John",
-    chapter: Math.max(1, Number(search.chapter ?? 1) || 1),
+    book: findBook(String(search["book"] ?? "John"))?.name ?? "John",
+    chapter: Math.max(1, Number(search["chapter"] ?? 1) || 1),
   }),
   head: () => ({
     meta: [
