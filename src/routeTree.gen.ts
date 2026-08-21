@@ -15,6 +15,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedBibleRouteImport } from './routes/_authenticated/bible'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
+import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
 import { Route as AuthenticatedLogStudyRouteImport } from './routes/_authenticated/log-study'
 
 const IndexRoute = IndexRouteImport.update({
@@ -46,6 +48,16 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
+  id: '/leader',
+  path: '/leader',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLogStudyRoute = AuthenticatedLogStudyRouteImport.update({
   id: '/log-study',
   path: '/log-study',
@@ -58,6 +70,8 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/bible': typeof AuthenticatedBibleRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/groups': typeof AuthenticatedGroupsRoute
+  '/leader': typeof AuthenticatedLeaderRoute
   '/log-study': typeof AuthenticatedLogStudyRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +80,8 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/bible': typeof AuthenticatedBibleRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/groups': typeof AuthenticatedGroupsRoute
+  '/leader': typeof AuthenticatedLeaderRoute
   '/log-study': typeof AuthenticatedLogStudyRoute
 }
 export interface FileRoutesById {
@@ -76,14 +92,31 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/bible': typeof AuthenticatedBibleRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/groups': typeof AuthenticatedGroupsRoute
+  '/_authenticated/leader': typeof AuthenticatedLeaderRoute
   '/_authenticated/log-study': typeof AuthenticatedLogStudyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/reset-password' | '/bible' | '/dashboard' | '/log-study'
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/bible'
+    | '/dashboard'
+    | '/groups'
+    | '/leader'
+    | '/log-study'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/bible' | '/dashboard' | '/log-study'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/bible'
+    | '/dashboard'
+    | '/groups'
+    | '/leader'
+    | '/log-study'
   id:
     | '__root__'
     | '/'
@@ -92,6 +125,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/bible'
     | '/_authenticated/dashboard'
+    | '/_authenticated/groups'
+    | '/_authenticated/leader'
     | '/_authenticated/log-study'
   fileRoutesById: FileRoutesById
 }
@@ -146,6 +181,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/groups': {
+      id: '/_authenticated/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof AuthenticatedGroupsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leader': {
+      id: '/_authenticated/leader'
+      path: '/leader'
+      fullPath: '/leader'
+      preLoaderRoute: typeof AuthenticatedLeaderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/log-study': {
       id: '/_authenticated/log-study'
       path: '/log-study'
@@ -159,12 +208,16 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBibleRoute: typeof AuthenticatedBibleRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRoute
+  AuthenticatedLeaderRoute: typeof AuthenticatedLeaderRoute
   AuthenticatedLogStudyRoute: typeof AuthenticatedLogStudyRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBibleRoute: AuthenticatedBibleRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedGroupsRoute: AuthenticatedGroupsRoute,
+  AuthenticatedLeaderRoute: AuthenticatedLeaderRoute,
   AuthenticatedLogStudyRoute: AuthenticatedLogStudyRoute,
 }
 
