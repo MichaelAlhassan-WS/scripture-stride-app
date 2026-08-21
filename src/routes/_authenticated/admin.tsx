@@ -1,0 +1,379 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { BookOpen, Plus, Users } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { StatCard } from "@/components/StatCard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useProfile, useSession } from "@/hooks/use-session";
+import { supabase } from "@/integrations/supabase/client";
+import { todayKey } from "@/lib/stats";
+
+export const Route = createFileRoute("/_authenticated/admin")({
+  head: () => ({
+    meta: [
+      { title: "Administrator dashboard — FaithTrack" },
+      {
+        name: "description",
+        content:
+          "Manage FaithTrack members, groups, leaders and reading plans across your whole church community.",
+      },
+      { property: "og:title", content: "Administrator dashboard — FaithTrack" },
+      { property: "og:description", content: "Members, groups and reading plan management." },
+    ],
+  }),
+  component: AdminPage,
+});
+
+type Visibility = "private" | "anonymous" | "group";
+
+function AdminPage() {
+  const { user } = useSession();
+  const { data: profileData } = useProfile();
+  const queryClient = useQueryClient();
+
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("group");
+  const [planName, setPlanName] = useState("");
+  const [planDescription, setPlanDescription] = useState("");
+  const [assignGroup, setAssignGroup] = useState("");
+  const [assignUser, setAssignUser] = useState("");
+  const [assignLeader, setAssignLeader] = useState("false");
+
+  const isAdmin = Boolean(profileData?.isAdmin);
+
+  const data = useQuery({
+    queryKey: ["admin-overview"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const [profiles, roles, groups, members, plans, logs] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email, created_at"),
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.from("groups").select("id, name, description, visibility_mode, plan_id"),
+        supabase.from("group_members").select("id, group_id, user_id, is_leader"),
+        supabase.from("reading_plans").select("id, name, description, start_date, is_active"),
+        supabase.from("study_logs").select("user_id, studied_on"),
+      ]);
+      return {
+        profiles: profiles.data ?? [],
+        roles: roles.data ?? [],
+        groups: groups.data ?? [],
+        members: members.data ?? [],
+        plans: plans.data ?? [],
+        logs: logs.data ?? [],
+      };
+    },
+  });
+
+  const createGroup = useMutation({
+    mutationFn: async () => {
+      if (groupName.trim().length < 2) throw new Error("Group name is too short");
+      const { error } = await supabase.from("groups").insert({
+        name: groupName.trim().slice(0, 100),
+        description: groupDescription.trim().slice(0, 500),
+        visibility_mode: visibility,
+        created_by: user?.id ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Group created");
+      setGroupName("");
+      setGroupDescription("");
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const createPlan = useMutation({
+    mutationFn: async () => {
+      if (planName.trim().length < 2) throw new Error("Plan name is too short");
+      const { error } = await supabase.from("reading_plans").insert({
+        name: planName.trim().slice(0, 100),
+        description: planDescription.trim().slice(0, 500),
+        start_date: todayKey(),
+        created_by: user?.id ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Reading plan created");
+      setPlanName("");
+      setPlanDescription("");
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const addMember = useMutation({
+    mutationFn: async () => {
+      if (!assignGroup || !assignUser) throw new Error("Choose a group and a member");
+      const { error } = await supabase.from("group_members").insert({
+        group_id: assignGroup,
+        user_id: assignUser,
+        is_leader: assignLeader === "true",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Member assigned");
+      setAssignUser("");
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const attachPlan = useMutation({
+    mutationFn: async ({ groupId, planId }: { groupId: string; planId: string }) => {
+      const { error } = await supabase
+        .from("groups")
+        .update({ plan_id: planId === "none" ? null : planId })
+        .eq("id", groupId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Plan updated for group");
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (!isAdmin) {
+    return (
+      <div className="surface-card p-6">
+        <h1 className="text-2xl">Administrator dashboard</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This area is restricted to administrators.
+        </p>
+      </div>
+    );
+  }
+
+  const overview = data.data;
+  const activeToday = new Set(
+    (overview?.logs ?? []).filter((l) => l.studied_on === todayKey()).map((l) => l.user_id),
+  ).size;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl text-foreground sm:text-3xl">Administrator dashboard</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Manage members, groups, leaders and reading plans.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Members" value={overview?.profiles.length ?? 0} icon={Users} />
+        <StatCard label="Groups" value={overview?.groups.length ?? 0} />
+        <StatCard label="Reading plans" value={overview?.plans.length ?? 0} icon={BookOpen} />
+        <StatCard label="Studied today" value={activeToday} tone="gold" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="surface-card space-y-3 p-5">
+          <h2 className="text-lg">Create a group</h2>
+          <div className="space-y-1.5">
+            <Label htmlFor="group-name">Name</Label>
+            <Input
+              id="group-name"
+              maxLength={100}
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="Tuesday Discipleship"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="group-desc">Description</Label>
+            <Textarea
+              id="group-desc"
+              maxLength={500}
+              value={groupDescription}
+              onChange={(e) => setGroupDescription(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Visibility mode</Label>
+            <Select value={visibility} onValueChange={(v) => setVisibility(v as Visibility)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="private">Private — only leaders see progress</SelectItem>
+                <SelectItem value="anonymous">Anonymous — stats without names</SelectItem>
+                <SelectItem value="group">Group — members encourage each other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button disabled={createGroup.isPending} onClick={() => createGroup.mutate()}>
+            <Plus className="mr-1 size-4" />
+            Create group
+          </Button>
+        </section>
+
+        <section className="surface-card space-y-3 p-5">
+          <h2 className="text-lg">Create a reading plan</h2>
+          <div className="space-y-1.5">
+            <Label htmlFor="plan-name">Name</Label>
+            <Input
+              id="plan-name"
+              maxLength={100}
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              placeholder="Gospel of John in 21 days"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="plan-desc">Description</Label>
+            <Textarea
+              id="plan-desc"
+              maxLength={500}
+              value={planDescription}
+              onChange={(e) => setPlanDescription(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="secondary"
+            disabled={createPlan.isPending}
+            onClick={() => createPlan.mutate()}
+          >
+            <Plus className="mr-1 size-4" />
+            Create plan
+          </Button>
+        </section>
+      </div>
+
+      <section className="surface-card space-y-3 p-5">
+        <h2 className="text-lg">Assign a member to a group</h2>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Member</Label>
+            <Select value={assignUser} onValueChange={setAssignUser}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose member" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {(overview?.profiles ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.full_name || p.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Group</Label>
+            <Select value={assignGroup} onValueChange={setAssignGroup}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose group" />
+              </SelectTrigger>
+              <SelectContent>
+                {(overview?.groups ?? []).map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Role in group</Label>
+            <Select value={assignLeader} onValueChange={setAssignLeader}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="false">Member</SelectItem>
+                <SelectItem value="true">Group leader</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button disabled={addMember.isPending} onClick={() => addMember.mutate()}>
+          Assign
+        </Button>
+      </section>
+
+      <section className="surface-card p-5">
+        <h2 className="text-lg">Groups</h2>
+        <div className="mt-3 divide-y divide-border">
+          {(overview?.groups ?? []).map((group) => {
+            const groupMembers = (overview?.members ?? []).filter((m) => m.group_id === group.id);
+            const leaders = groupMembers.filter((m) => m.is_leader).length;
+            return (
+              <div
+                key={group.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div>
+                  <p className="text-sm font-medium">{group.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {groupMembers.length} members · {leaders} leader{leaders === 1 ? "" : "s"} ·{" "}
+                    {group.visibility_mode} mode
+                  </p>
+                </div>
+                <div className="w-56">
+                  <Select
+                    value={group.plan_id ?? "none"}
+                    onValueChange={(planId) => attachPlan.mutate({ groupId: group.id, planId })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Reading plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No plan</SelectItem>
+                      {(overview?.plans ?? []).map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="surface-card p-5">
+        <h2 className="text-lg">Members</h2>
+        <div className="mt-3 divide-y divide-border">
+          {(overview?.profiles ?? []).map((p) => {
+            const roles = (overview?.roles ?? [])
+              .filter((r) => r.user_id === p.id)
+              .map((r) => r.role);
+            return (
+              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <div>
+                  <p className="text-sm font-medium">{p.full_name || "Unnamed"}</p>
+                  <p className="text-xs text-muted-foreground">{p.email}</p>
+                </div>
+                <div className="flex gap-1">
+                  {roles.map((role) => (
+                    <Badge key={role} variant="secondary" className="capitalize">
+                      {role}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}

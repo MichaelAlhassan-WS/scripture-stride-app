@@ -190,11 +190,10 @@ function DashboardPage() {
             >
               <Link
                 to="/bible"
-                search={
-                  todayAssignment
-                    ? { book: todayAssignment.book, chapter: todayAssignment.chapter_start }
-                    : undefined
-                }
+                search={{
+                  book: todayAssignment?.book ?? "John",
+                  chapter: todayAssignment?.chapter_start ?? 1,
+                }}
               >
                 Open Bible reader
               </Link>
