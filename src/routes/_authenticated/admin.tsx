@@ -4,6 +4,7 @@ import { BookOpen, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { RoleGate } from "@/components/RoleGate";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,11 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { property: "og:description", content: "Members, groups and reading plan management." },
     ],
   }),
-  component: AdminPage,
+  component: () => (
+    <RoleGate require="admin">
+      <AdminPage />
+    </RoleGate>
+  ),
 });
 
 type Visibility = "private" | "anonymous" | "group";
@@ -150,17 +155,6 @@ function AdminPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
-
-  if (!isAdmin) {
-    return (
-      <div className="surface-card p-6">
-        <h1 className="text-2xl">Administrator dashboard</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This area is restricted to administrators.
-        </p>
-      </div>
-    );
-  }
 
   const overview = data.data;
   const activeToday = new Set(

@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Flame } from "lucide-react";
 
+import { RoleGate } from "@/components/RoleGate";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useProfile, useSession } from "@/hooks/use-session";
+import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { currentStreak, lastNDays, percent, todayKey } from "@/lib/stats";
 
@@ -22,12 +23,15 @@ export const Route = createFileRoute("/_authenticated/leader")({
       { property: "og:description", content: "Completion rates and member activity per group." },
     ],
   }),
-  component: LeaderPage,
+  component: () => (
+    <RoleGate require="leader">
+      <LeaderPage />
+    </RoleGate>
+  ),
 });
 
 function LeaderPage() {
   const { user } = useSession();
-  const { data: profileData } = useProfile();
   const userId = user?.id;
 
   const overview = useQuery({
