@@ -156,6 +156,36 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const setRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "leader" | "member" }) => {
+      const { error: delError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId)
+        .in("role", ["admin", "leader"]);
+      if (delError) throw delError;
+      const { error } = await supabase
+        .from("user_roles")
+        .upsert(
+          role === "member"
+            ? { user_id: userId, role: "member" as const }
+            : [
+                { user_id: userId, role: "member" as const },
+                { user_id: userId, role },
+              ],
+          { onConflict: "user_id,role", ignoreDuplicates: true },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Role updated");
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
   const overview = data.data;
   const activeToday = new Set(
     (overview?.logs ?? []).filter((l) => l.studied_on === todayKey()).map((l) => l.user_id),
