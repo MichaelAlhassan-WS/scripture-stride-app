@@ -44,6 +44,21 @@ export type Database = {
         }
         Relationships: []
       }
+      bootstrap_admins: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           group_id: string
