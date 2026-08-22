@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Flame } from "lucide-react";
 
+import { RoleGate } from "@/components/RoleGate";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useProfile, useSession } from "@/hooks/use-session";
+import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { currentStreak, lastNDays, percent, todayKey } from "@/lib/stats";
 
@@ -22,12 +23,15 @@ export const Route = createFileRoute("/_authenticated/leader")({
       { property: "og:description", content: "Completion rates and member activity per group." },
     ],
   }),
-  component: LeaderPage,
+  component: () => (
+    <RoleGate require="leader">
+      <LeaderPage />
+    </RoleGate>
+  ),
 });
 
 function LeaderPage() {
   const { user } = useSession();
-  const { data: profileData } = useProfile();
   const userId = user?.id;
 
   const overview = useQuery({
@@ -90,17 +94,6 @@ function LeaderPage() {
       return groups;
     },
   });
-
-  if (!profileData?.isLeader) {
-    return (
-      <div className="surface-card p-6">
-        <h1 className="text-2xl">Leader dashboard</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This area is for group leaders. Ask an administrator if you should have leader access.
-        </p>
-      </div>
-    );
-  }
 
   const groups = overview.data ?? [];
   const totalMembers = groups.reduce((sum, g) => sum + g.stats.length, 0);
