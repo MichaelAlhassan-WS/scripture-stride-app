@@ -374,30 +374,58 @@ function AdminPage() {
       </section>
 
       <section className="surface-card p-5">
-        <h2 className="text-lg">Members</h2>
+        <h2 className="text-lg">Members &amp; roles</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Administrators grant access here. Roles apply the next time the member loads a page.
+        </p>
         <div className="mt-3 divide-y divide-border">
           {(overview?.profiles ?? []).map((p) => {
             const roles = (overview?.roles ?? [])
               .filter((r) => r.user_id === p.id)
               .map((r) => r.role);
+            const effective = roles.includes("admin")
+              ? "admin"
+              : roles.includes("leader")
+                ? "leader"
+                : "member";
             return (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <div>
                   <p className="text-sm font-medium">{p.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground">{p.email}</p>
                 </div>
-                <div className="flex gap-1">
-                  {roles.map((role) => (
-                    <Badge key={role} variant="secondary" className="capitalize">
-                      {role}
-                    </Badge>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="capitalize">
+                    {effective}
+                  </Badge>
+                  <div className="w-40">
+                    <Select
+                      value={effective}
+                      disabled={setRole.isPending || p.id === user?.id}
+                      onValueChange={(role) =>
+                        setRole.mutate({
+                          userId: p.id,
+                          role: role as "admin" | "leader" | "member",
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="leader">Group leader</SelectItem>
+                        <SelectItem value="admin">Administrator</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       </section>
+
     </div>
   );
 }
