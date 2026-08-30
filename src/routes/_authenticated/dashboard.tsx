@@ -193,6 +193,7 @@ function DashboardPage() {
                 search={{
                   book: todayAssignment?.book ?? "John",
                   chapter: todayAssignment?.chapter_start ?? 1,
+                  version: "KJV",
                 }}
               >
                 Open Bible reader
