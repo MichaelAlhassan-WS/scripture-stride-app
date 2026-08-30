@@ -16,34 +16,42 @@ import {
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { BIBLE_BOOKS, findBook } from "@/lib/bible-books";
-import { loadChapter, searchScripture, type SearchHit } from "@/lib/bible";
+import {
+  BIBLE_VERSIONS,
+  DEFAULT_VERSION,
+  findVersion,
+  loadChapter,
+  searchScripture,
+  type SearchHit,
+} from "@/lib/bible";
 import { todayKey } from "@/lib/stats";
 import { cn } from "@/lib/utils";
 
-type BibleSearch = { book: string; chapter: number };
+type BibleSearch = { book: string; chapter: number; version: string };
 
 export const Route = createFileRoute("/_authenticated/bible")({
   validateSearch: (search: Record<string, unknown>): BibleSearch => ({
     book: findBook(String(search["book"] ?? "John"))?.name ?? "John",
     chapter: Math.max(1, Number(search["chapter"] ?? 1) || 1),
+    version: findVersion(String(search["version"] ?? DEFAULT_VERSION)).code,
   }),
   head: () => ({
     meta: [
-      { title: "KJV Bible reader — FaithTrack" },
+      { title: "Bible reader — KJV, WEB & ASV — FaithTrack" },
       {
         name: "description",
         content:
-          "Read the King James Version in FaithTrack: browse books and chapters, search scripture, bookmark and highlight verses.",
+          "Read the KJV, World English Bible or ASV in FaithTrack: browse books and chapters, search scripture, bookmark and highlight verses.",
       },
-      { property: "og:title", content: "KJV Bible reader — FaithTrack" },
-      { property: "og:description", content: "Browse, search, bookmark and highlight the KJV." },
+      { property: "og:title", content: "Bible reader — KJV, WEB & ASV — FaithTrack" },
+      { property: "og:description", content: "Browse, search, bookmark and highlight three public-domain translations." },
     ],
   }),
   component: BiblePage,
 });
 
 function BiblePage() {
-  const { book, chapter } = Route.useSearch();
+  const { book, chapter, version } = Route.useSearch();
   const navigate = useNavigate();
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -68,9 +76,11 @@ function BiblePage() {
     return () => clearInterval(timer);
   }, [book, safeChapter]);
 
+  const versionMeta = findVersion(version);
+
   const verses = useQuery({
-    queryKey: ["chapter", book, safeChapter],
-    queryFn: () => loadChapter(book, safeChapter),
+    queryKey: ["chapter", version, book, safeChapter],
+    queryFn: () => loadChapter(book, safeChapter, version),
   });
 
   const marks = useQuery({
@@ -182,7 +192,7 @@ function BiblePage() {
     }
     setSearching(true);
     try {
-      const hits = await searchScripture(query);
+      const hits = await searchScripture(query, version);
       setResults(hits);
       if (hits.length === 0) toast.info("No verses matched that search");
     } finally {
@@ -195,9 +205,12 @@ function BiblePage() {
     [chapterCount],
   );
 
-  function go(nextBook: string, nextChapter: number) {
+  function go(nextBook: string, nextChapter: number, nextVersion = version) {
     setResults(null);
-    navigate({ to: "/bible", search: { book: nextBook, chapter: nextChapter } });
+    navigate({
+      to: "/bible",
+      search: { book: nextBook, chapter: nextChapter, version: nextVersion },
+    });
   }
 
   return (
@@ -206,7 +219,7 @@ function BiblePage() {
         <div>
           <h1 className="text-2xl text-foreground sm:text-3xl">Bible reader</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            King James Version · {viewedCount.data ?? 0} chapters tracked
+            {versionMeta.name} · {viewedCount.data ?? 0} chapters tracked
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -216,6 +229,23 @@ function BiblePage() {
       </div>
 
       <div className="surface-card flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
+        <div className="w-full space-y-1.5 sm:w-44">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Version
+          </span>
+          <Select value={versionMeta.code} onValueChange={(value) => go(book, safeChapter, value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BIBLE_VERSIONS.map((v) => (
+                <SelectItem key={v.code} value={v.code}>
+                  {v.shortName} — {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex-1 space-y-1.5">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Book
@@ -266,7 +296,7 @@ function BiblePage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search the KJV, e.g. abide in me"
+            placeholder={`Search the ${versionMeta.shortName}, e.g. abide in me`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -310,6 +340,7 @@ function BiblePage() {
           <h2 className="font-display text-2xl text-primary">
             {book} {safeChapter}
           </h2>
+          <p className="mt-1 text-xs text-muted-foreground">{versionMeta.note}</p>
           {verses.isLoading ? (
             <p className="mt-4 text-sm text-muted-foreground">Loading chapter…</p>
           ) : null}
