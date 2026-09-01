@@ -87,7 +87,7 @@ function BiblePage() {
     queryKey: ["marks", userId, book, safeChapter],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const [bookmarks, highlights, sessions] = await Promise.all([
+      const [bookmarks, highlights] = await Promise.all([
         supabase
           .from("bookmarks")
           .select("verse")
@@ -100,33 +100,74 @@ function BiblePage() {
           .eq("user_id", userId!)
           .eq("book", book)
           .eq("chapter", safeChapter),
-        supabase
-          .from("reading_sessions")
-          .select("id, completed")
-          .eq("user_id", userId!)
-          .eq("book", book)
-          .eq("chapter", safeChapter),
       ]);
       return {
         bookmarks: new Set((bookmarks.data ?? []).map((b) => b.verse)),
         highlights: new Set((highlights.data ?? []).map((h) => h.verse)),
-        completed: (sessions.data ?? []).some((s) => s.completed),
       };
     },
   });
 
-  const viewedCount = useQuery({
-    queryKey: ["viewed-count", userId],
+  /** Every distinct chapter this user has completed, used for badges + counters. */
+  const completedChapters = useQuery({
+    queryKey: ["completed-chapters", userId],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("reading_sessions")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId!);
+        .select("book, chapter")
+        .eq("user_id", userId!)
+        .eq("completed", true)
+        .limit(5000);
       if (error) throw error;
-      return count ?? 0;
+      return new Set((data ?? []).map((s) => `${s.book}|${s.chapter}`));
     },
   });
+
+  const completedSet = completedChapters.data ?? new Set<string>();
+  const chapterCompleted = completedSet.has(`${book}|${safeChapter}`);
+  const distinctCompleted = completedSet.size;
+  const completedInBook = useMemo(
+    () => Array.from(completedSet).filter((key) => key.startsWith(`${book}|`)).length,
+    [completedSet, book],
+  );
+
+  /** Today's plan assignment, so an in-app completion can tick it off. */
+  const todayAssignment = useQuery({
+    queryKey: ["today-assignment", userId],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const { data: memberships, error } = await supabase
+        .from("group_members")
+        .select("group_id, groups(id, name, plan_id)")
+        .eq("user_id", userId!);
+      if (error) throw error;
+      const group = (memberships ?? []).map((m) => m.groups).find((g) => g?.plan_id);
+      if (!group?.plan_id) return null;
+      const [planRes, assignmentsRes] = await Promise.all([
+        supabase.from("reading_plans").select("*").eq("id", group.plan_id).maybeSingle(),
+        supabase
+          .from("reading_assignments")
+          .select("*")
+          .eq("plan_id", group.plan_id)
+          .order("day_number"),
+      ]);
+      if (planRes.error) throw planRes.error;
+      if (assignmentsRes.error) throw assignmentsRes.error;
+      if (!planRes.data) return null;
+      const assignments = assignmentsRes.data ?? [];
+      const day = planDayNumber(planRes.data.start_date, assignments.length);
+      return assignments.find((a) => a.day_number === day) ?? null;
+    },
+  });
+
+  const assignment = todayAssignment.data;
+  const matchesAssignment = Boolean(
+    assignment &&
+      assignment.book === book &&
+      safeChapter >= assignment.chapter_start &&
+      safeChapter <= assignment.chapter_end,
+  );
 
   const toggleMark = useMutation({
     mutationFn: async ({ table, verse }: { table: "bookmarks" | "highlights"; verse: number }) => {
