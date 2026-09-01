@@ -1,0 +1,30 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_roles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.groups TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.group_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.reading_plans TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.reading_assignments TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.study_logs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.reading_sessions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.bookmarks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.highlights TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.notifications TO authenticated;
+GRANT SELECT ON public.bootstrap_admins TO authenticated;
+
+GRANT ALL ON public.profiles TO service_role;
+GRANT ALL ON public.user_roles TO service_role;
+GRANT ALL ON public.groups TO service_role;
+GRANT ALL ON public.group_members TO service_role;
+GRANT ALL ON public.reading_plans TO service_role;
+GRANT ALL ON public.reading_assignments TO service_role;
+GRANT ALL ON public.study_logs TO service_role;
+GRANT ALL ON public.reading_sessions TO service_role;
+GRANT ALL ON public.bookmarks TO service_role;
+GRANT ALL ON public.highlights TO service_role;
+GRANT ALL ON public.notifications TO service_role;
+GRANT ALL ON public.bootstrap_admins TO service_role;
+
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_view_user(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_group_member(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.leads_group(uuid, uuid) TO authenticated;
