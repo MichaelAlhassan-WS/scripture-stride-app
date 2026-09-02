@@ -211,7 +211,55 @@ function AdminPage() {
         <StatCard label="Studied today" value={activeToday} tone="gold" />
       </div>
 
+      <section className="surface-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg">Reading activity report</h2>
+          <p className="text-sm text-muted-foreground">
+            {(overview?.logs ?? []).reduce((sum, l) => sum + chaptersRead(l), 0)} chapters ·{" "}
+            {formatMinutes((overview?.logs ?? []).reduce((sum, l) => sum + (l.minutes ?? 0), 0))}{" "}
+            recorded
+          </p>
+        </div>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Member</th>
+                <th className="py-2 pr-3 font-medium">Passage</th>
+                <th className="py-2 pr-3 font-medium">Chapters</th>
+                <th className="py-2 pr-3 font-medium">Time</th>
+                <th className="py-2 pr-3 font-medium">Date</th>
+                <th className="py-2 font-medium">Reflection</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {(overview?.logs ?? []).slice(0, 50).map((log, i) => {
+                const profile = (overview?.profiles ?? []).find((p) => p.id === log.user_id);
+                return (
+                  <tr key={`${log.user_id}-${i}`}>
+                    <td className="py-2 pr-3">{profile?.full_name || profile?.email || "Member"}</td>
+                    <td className="py-2 pr-3 font-medium">{formatPassage(log)}</td>
+                    <td className="py-2 pr-3">{chaptersRead(log)}</td>
+                    <td className="py-2 pr-3">{formatMinutes(log.minutes)}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{log.studied_on}</td>
+                    <td className="max-w-xs py-2">
+                      <span className="line-clamp-2 text-muted-foreground">
+                        {log.reflection || "—"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {(overview?.logs ?? []).length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No study logged yet.</p>
+          ) : null}
+        </div>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-2">
+
         <section className="surface-card space-y-3 p-5">
           <h2 className="text-lg">Create a group</h2>
           <div className="space-y-1.5">
