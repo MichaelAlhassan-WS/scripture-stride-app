@@ -55,7 +55,10 @@ function LeaderPage() {
             .from("group_members")
             .select("user_id")
             .eq("group_id", group.id),
-          supabase.from("study_logs").select("user_id, studied_on, book, chapter"),
+          supabase
+            .from("study_logs")
+            .select("user_id, studied_on, book, chapter, chapter_end, minutes, reflection, source")
+            .order("studied_on", { ascending: false }),
         ]);
         const members = membersRes.data ?? [];
         const ids = new Set(members.map((m) => m.user_id));
@@ -67,7 +70,8 @@ function LeaderPage() {
         const profileById = new Map((profileRows ?? []).map((p) => [p.id, p]));
 
         const stats = members.map((member) => {
-          const dates = logs.filter((l) => l.user_id === member.user_id).map((l) => l.studied_on);
+          const memberLogs = logs.filter((l) => l.user_id === member.user_id);
+          const dates = memberLogs.map((l) => l.studied_on);
           const profile = profileById.get(member.user_id);
           const weekDays = week.filter((d) => dates.includes(d)).length;
           return {
@@ -78,6 +82,9 @@ function LeaderPage() {
             missedDays: 7 - weekDays,
             doneToday: dates.includes(todayKey()),
             lastStudied: [...dates].sort().pop() ?? null,
+            chapters: memberLogs.reduce((sum, l) => sum + chaptersRead(l), 0),
+            minutes: memberLogs.reduce((sum, l) => sum + (l.minutes ?? 0), 0),
+            recent: memberLogs.slice(0, 5),
           };
         });
 
@@ -94,6 +101,7 @@ function LeaderPage() {
       return groups;
     },
   });
+
 
   const groups = overview.data ?? [];
   const totalMembers = groups.reduce((sum, g) => sum + g.stats.length, 0);
