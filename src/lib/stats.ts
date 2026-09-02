@@ -64,3 +64,33 @@ export function planDayNumber(startDate: string, totalDays: number): number {
   if (diff < 0) return 1;
   return (diff % totalDays) + 1;
 }
+export type PassageLog = {
+  book: string;
+  chapter: number;
+  chapter_end?: number | null;
+  verse_start?: number | null;
+  verse_end?: number | null;
+};
+
+/** "Jeremiah 1-5" or "John 15:1-17" — chapter ranges take priority over verses. */
+export function formatPassage(log: PassageLog): string {
+  const end = log.chapter_end ?? log.chapter;
+  if (end > log.chapter) return `${log.book} ${log.chapter}-${end}`;
+  if (log.verse_start) {
+    return `${log.book} ${log.chapter}:${log.verse_start}${
+      log.verse_end && log.verse_end > log.verse_start ? `-${log.verse_end}` : ""
+    }`;
+  }
+  return `${log.book} ${log.chapter}`;
+}
+
+/** Number of chapters covered by a log entry. */
+export function chaptersRead(log: PassageLog): number {
+  const end = log.chapter_end ?? log.chapter;
+  return Math.max(1, end - log.chapter + 1);
+}
+
+/** Minutes for display: blank when the member did not record time. */
+export function formatMinutes(minutes: number | null | undefined): string {
+  return minutes && minutes > 0 ? `${minutes} min` : "—";
+}
