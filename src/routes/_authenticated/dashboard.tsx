@@ -113,7 +113,9 @@ function DashboardPage() {
         user_id: userId,
         book: todayAssignment?.book ?? "Bible",
         chapter: todayAssignment?.chapter_start ?? 1,
-        minutes: 0,
+        chapter_end: todayAssignment?.chapter_end ?? todayAssignment?.chapter_start ?? 1,
+        minutes: null,
+
         source: "in_app",
         assignment_id: todayAssignment?.id ?? null,
         reflection: "",
