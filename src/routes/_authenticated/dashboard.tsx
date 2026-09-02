@@ -241,12 +241,7 @@ function DashboardPage() {
           {(logs.data ?? []).slice(0, 8).map((log) => (
             <div key={log.id} className="flex items-start justify-between gap-3 py-3">
               <div>
-                <p className="text-sm font-medium">
-                  {log.book} {log.chapter}
-                  {log.verse_start
-                    ? `:${log.verse_start}${log.verse_end ? `-${log.verse_end}` : ""}`
-                    : ""}
-                </p>
+                <p className="text-sm font-medium">{formatPassage(log)}</p>
                 {log.reflection ? (
                   <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                     {log.reflection}
@@ -256,10 +251,15 @@ function DashboardPage() {
               <div className="shrink-0 text-right">
                 <p className="text-xs text-muted-foreground">{log.studied_on}</p>
                 <p className="text-xs text-muted-foreground">
-                  {log.minutes ? `${log.minutes} min` : log.source === "in_app" ? "In app" : "—"}
+                  {log.minutes
+                    ? formatMinutes(log.minutes)
+                    : log.source === "in_app"
+                      ? "In app"
+                      : "—"}
                 </p>
               </div>
             </div>
+
           ))}
           {!logs.isLoading && (logs.data ?? []).length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">
