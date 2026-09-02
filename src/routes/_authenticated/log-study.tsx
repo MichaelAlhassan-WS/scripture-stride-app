@@ -37,10 +37,9 @@ export const Route = createFileRoute("/_authenticated/log-study")({
 
 const schema = z.object({
   book: z.string().min(1, "Choose a Bible book"),
-  chapter: z.number().int().min(1, "Chapter is required"),
-  verseStart: z.number().int().min(1).optional(),
-  verseEnd: z.number().int().min(1).optional(),
-  minutes: z.number().int().min(0).max(1440),
+  chapterStart: z.number().int().min(1, "Start chapter is required"),
+  chapterEnd: z.number().int().min(1, "End chapter is required"),
+  minutes: z.number().int().min(1).max(1440).nullable(),
   reflection: z.string().trim().max(2000, "Keep reflections under 2000 characters"),
   studiedOn: z.string().min(1),
 });
@@ -50,10 +49,9 @@ function LogStudyPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [book, setBook] = useState("John");
-  const [chapter, setChapter] = useState("15");
-  const [verseStart, setVerseStart] = useState("");
-  const [verseEnd, setVerseEnd] = useState("");
-  const [minutes, setMinutes] = useState("20");
+  const [chapterStart, setChapterStart] = useState("15");
+  const [chapterEnd, setChapterEnd] = useState("15");
+  const [minutes, setMinutes] = useState("");
   const [reflection, setReflection] = useState("");
   const [studiedOn, setStudiedOn] = useState(todayKey());
 
@@ -63,23 +61,21 @@ function LogStudyPage() {
     mutationFn: async () => {
       const parsed = schema.safeParse({
         book,
-        chapter: Number(chapter),
-        verseStart: verseStart ? Number(verseStart) : undefined,
-        verseEnd: verseEnd ? Number(verseEnd) : undefined,
-        minutes: Number(minutes || 0),
+        chapterStart: Number(chapterStart),
+        chapterEnd: Number(chapterEnd || chapterStart),
+        minutes: minutes.trim() ? Number(minutes) : null,
         reflection,
         studiedOn,
       });
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
-      if (parsed.data.chapter > chapterCount) {
-        throw new Error(`${book} has ${chapterCount} chapters`);
-      }
+      const { chapterStart: start, chapterEnd: end } = parsed.data;
+      if (end < start) throw new Error("End chapter cannot be before the start chapter");
+      if (end > chapterCount) throw new Error(`${book} has ${chapterCount} chapters`);
       const { error } = await supabase.from("study_logs").insert({
         user_id: user!.id,
         book: parsed.data.book,
-        chapter: parsed.data.chapter,
-        verse_start: parsed.data.verseStart ?? null,
-        verse_end: parsed.data.verseEnd ?? null,
+        chapter: start,
+        chapter_end: end,
         minutes: parsed.data.minutes,
         reflection: parsed.data.reflection,
         source: "external",
@@ -94,6 +90,7 @@ function LogStudyPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
