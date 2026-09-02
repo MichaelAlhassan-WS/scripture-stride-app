@@ -20,7 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useProfile, useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { todayKey } from "@/lib/stats";
+import { chaptersRead, formatMinutes, formatPassage, todayKey } from "@/lib/stats";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -70,7 +70,11 @@ function AdminPage() {
         supabase.from("groups").select("id, name, description, visibility_mode, plan_id"),
         supabase.from("group_members").select("id, group_id, user_id, is_leader"),
         supabase.from("reading_plans").select("id, name, description, start_date, is_active"),
-        supabase.from("study_logs").select("user_id, studied_on"),
+        supabase
+          .from("study_logs")
+          .select("user_id, studied_on, book, chapter, chapter_end, minutes, reflection, source")
+          .order("studied_on", { ascending: false })
+          .limit(200),
       ]);
       return {
         profiles: profiles.data ?? [],
