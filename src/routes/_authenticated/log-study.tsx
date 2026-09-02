@@ -37,10 +37,9 @@ export const Route = createFileRoute("/_authenticated/log-study")({
 
 const schema = z.object({
   book: z.string().min(1, "Choose a Bible book"),
-  chapter: z.number().int().min(1, "Chapter is required"),
-  verseStart: z.number().int().min(1).optional(),
-  verseEnd: z.number().int().min(1).optional(),
-  minutes: z.number().int().min(0).max(1440),
+  chapterStart: z.number().int().min(1, "Start chapter is required"),
+  chapterEnd: z.number().int().min(1, "End chapter is required"),
+  minutes: z.number().int().min(1).max(1440).nullable(),
   reflection: z.string().trim().max(2000, "Keep reflections under 2000 characters"),
   studiedOn: z.string().min(1),
 });
@@ -50,10 +49,9 @@ function LogStudyPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [book, setBook] = useState("John");
-  const [chapter, setChapter] = useState("15");
-  const [verseStart, setVerseStart] = useState("");
-  const [verseEnd, setVerseEnd] = useState("");
-  const [minutes, setMinutes] = useState("20");
+  const [chapterStart, setChapterStart] = useState("15");
+  const [chapterEnd, setChapterEnd] = useState("15");
+  const [minutes, setMinutes] = useState("");
   const [reflection, setReflection] = useState("");
   const [studiedOn, setStudiedOn] = useState(todayKey());
 
@@ -63,23 +61,21 @@ function LogStudyPage() {
     mutationFn: async () => {
       const parsed = schema.safeParse({
         book,
-        chapter: Number(chapter),
-        verseStart: verseStart ? Number(verseStart) : undefined,
-        verseEnd: verseEnd ? Number(verseEnd) : undefined,
-        minutes: Number(minutes || 0),
+        chapterStart: Number(chapterStart),
+        chapterEnd: Number(chapterEnd || chapterStart),
+        minutes: minutes.trim() ? Number(minutes) : null,
         reflection,
         studiedOn,
       });
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
-      if (parsed.data.chapter > chapterCount) {
-        throw new Error(`${book} has ${chapterCount} chapters`);
-      }
+      const { chapterStart: start, chapterEnd: end } = parsed.data;
+      if (end < start) throw new Error("End chapter cannot be before the start chapter");
+      if (end > chapterCount) throw new Error(`${book} has ${chapterCount} chapters`);
       const { error } = await supabase.from("study_logs").insert({
         user_id: user!.id,
         book: parsed.data.book,
-        chapter: parsed.data.chapter,
-        verse_start: parsed.data.verseStart ?? null,
-        verse_end: parsed.data.verseEnd ?? null,
+        chapter: start,
+        chapter_end: end,
         minutes: parsed.data.minutes,
         reflection: parsed.data.reflection,
         source: "external",
@@ -94,6 +90,7 @@ function LogStudyPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -123,52 +120,50 @@ function LogStudyPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="chapter">Chapter</Label>
-            <Input
-              id="chapter"
-              type="number"
-              min={1}
-              max={chapterCount}
-              value={chapter}
-              onChange={(e) => setChapter(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="verse-start">Verse from</Label>
-            <Input
-              id="verse-start"
-              type="number"
-              min={1}
-              placeholder="1"
-              value={verseStart}
-              onChange={(e) => setVerseStart(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="verse-end">Verse to</Label>
-            <Input
-              id="verse-end"
-              type="number"
-              min={1}
-              placeholder="17"
-              value={verseEnd}
-              onChange={(e) => setVerseEnd(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="minutes">Minutes studied</Label>
+            <Label htmlFor="minutes">Minutes studied (optional)</Label>
             <Input
               id="minutes"
               type="number"
-              min={0}
+              min={1}
+              max={1440}
+              placeholder="Leave blank if unknown"
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
             />
           </div>
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="chapter-start">Chapters from</Label>
+            <Input
+              id="chapter-start"
+              type="number"
+              min={1}
+              max={chapterCount}
+              value={chapterStart}
+              onChange={(e) => {
+                setChapterStart(e.target.value);
+                if (Number(e.target.value) > Number(chapterEnd || 0)) setChapterEnd(e.target.value);
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="chapter-end">Chapters to</Label>
+            <Input
+              id="chapter-end"
+              type="number"
+              min={1}
+              max={chapterCount}
+              value={chapterEnd}
+              onChange={(e) => setChapterEnd(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {book} has {chapterCount} chapters. Reading one chapter? Use the same number twice.
+            </p>
+          </div>
+        </div>
+
 
         <div className="space-y-2">
           <Label htmlFor="studied-on">Date studied</Label>

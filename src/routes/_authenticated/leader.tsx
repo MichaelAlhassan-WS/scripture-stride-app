@@ -8,7 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { currentStreak, lastNDays, percent, todayKey } from "@/lib/stats";
+import {
+  chaptersRead,
+  currentStreak,
+  formatMinutes,
+  formatPassage,
+  lastNDays,
+  percent,
+  todayKey,
+} from "@/lib/stats";
+
 
 export const Route = createFileRoute("/_authenticated/leader")({
   head: () => ({
@@ -55,7 +64,10 @@ function LeaderPage() {
             .from("group_members")
             .select("user_id")
             .eq("group_id", group.id),
-          supabase.from("study_logs").select("user_id, studied_on, book, chapter"),
+          supabase
+            .from("study_logs")
+            .select("user_id, studied_on, book, chapter, chapter_end, minutes, reflection, source")
+            .order("studied_on", { ascending: false }),
         ]);
         const members = membersRes.data ?? [];
         const ids = new Set(members.map((m) => m.user_id));
@@ -67,7 +79,8 @@ function LeaderPage() {
         const profileById = new Map((profileRows ?? []).map((p) => [p.id, p]));
 
         const stats = members.map((member) => {
-          const dates = logs.filter((l) => l.user_id === member.user_id).map((l) => l.studied_on);
+          const memberLogs = logs.filter((l) => l.user_id === member.user_id);
+          const dates = memberLogs.map((l) => l.studied_on);
           const profile = profileById.get(member.user_id);
           const weekDays = week.filter((d) => dates.includes(d)).length;
           return {
@@ -78,6 +91,9 @@ function LeaderPage() {
             missedDays: 7 - weekDays,
             doneToday: dates.includes(todayKey()),
             lastStudied: [...dates].sort().pop() ?? null,
+            chapters: memberLogs.reduce((sum, l) => sum + chaptersRead(l), 0),
+            minutes: memberLogs.reduce((sum, l) => sum + (l.minutes ?? 0), 0),
+            recent: memberLogs.slice(0, 5),
           };
         });
 
@@ -94,6 +110,7 @@ function LeaderPage() {
       return groups;
     },
   });
+
 
   const groups = overview.data ?? [];
   const totalMembers = groups.reduce((sum, g) => sum + g.stats.length, 0);
@@ -147,28 +164,52 @@ function LeaderPage() {
 
           <div className="mt-4 divide-y divide-border">
             {entry.stats.map((member) => (
-              <div key={member.userId} className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="text-sm font-medium">{member.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Last studied {member.lastStudied ?? "never"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Badge variant="secondary">
-                    <Flame className="mr-1 size-3 text-accent" />
-                    {member.streak}d streak
-                  </Badge>
-                  <Badge variant="secondary">{member.weekDays}/7 days</Badge>
-                  {member.missedDays >= 3 ? (
-                    <Badge className="bg-accent-soft text-accent-foreground hover:bg-accent-soft">
-                      <AlertTriangle className="mr-1 size-3" />
-                      {member.missedDays} missed
+              <div key={member.userId} className="py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{member.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Last studied {member.lastStudied ?? "never"} · {member.chapters} chapters ·{" "}
+                      {formatMinutes(member.minutes)} total
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge variant="secondary">
+                      <Flame className="mr-1 size-3 text-accent" />
+                      {member.streak}d streak
                     </Badge>
-                  ) : null}
+                    <Badge variant="secondary">{member.weekDays}/7 days</Badge>
+                    {member.missedDays >= 3 ? (
+                      <Badge className="bg-accent-soft text-accent-foreground hover:bg-accent-soft">
+                        <AlertTriangle className="mr-1 size-3" />
+                        {member.missedDays} missed
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
+
+                {member.recent.length ? (
+                  <ul className="mt-2 space-y-1 rounded-lg bg-secondary/50 px-3 py-2">
+                    {member.recent.map((log, i) => (
+                      <li key={`${member.userId}-${i}`} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{formatPassage(log)}</span>
+                        {" · "}
+                        {formatMinutes(log.minutes)}
+                        {" · "}
+                        {log.studied_on}
+                        {log.source === "in_app" ? " · in app" : ""}
+                        {log.reflection ? (
+                          <span className="mt-0.5 block line-clamp-2 italic">{log.reflection}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">No study recorded yet.</p>
+                )}
               </div>
             ))}
+
           </div>
         </section>
       ))}

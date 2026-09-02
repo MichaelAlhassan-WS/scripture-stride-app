@@ -319,9 +319,10 @@ export type Database = {
           assignment_id: string | null
           book: string
           chapter: number
+          chapter_end: number | null
           created_at: string
           id: string
-          minutes: number
+          minutes: number | null
           reflection: string
           source: Database["public"]["Enums"]["study_source"]
           studied_on: string
@@ -333,9 +334,10 @@ export type Database = {
           assignment_id?: string | null
           book: string
           chapter: number
+          chapter_end?: number | null
           created_at?: string
           id?: string
-          minutes?: number
+          minutes?: number | null
           reflection?: string
           source?: Database["public"]["Enums"]["study_source"]
           studied_on?: string
@@ -347,9 +349,10 @@ export type Database = {
           assignment_id?: string | null
           book?: string
           chapter?: number
+          chapter_end?: number | null
           created_at?: string
           id?: string
-          minutes?: number
+          minutes?: number | null
           reflection?: string
           source?: Database["public"]["Enums"]["study_source"]
           studied_on?: string
