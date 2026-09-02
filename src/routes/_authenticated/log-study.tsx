@@ -120,52 +120,50 @@ function LogStudyPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="chapter">Chapter</Label>
-            <Input
-              id="chapter"
-              type="number"
-              min={1}
-              max={chapterCount}
-              value={chapter}
-              onChange={(e) => setChapter(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="verse-start">Verse from</Label>
-            <Input
-              id="verse-start"
-              type="number"
-              min={1}
-              placeholder="1"
-              value={verseStart}
-              onChange={(e) => setVerseStart(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="verse-end">Verse to</Label>
-            <Input
-              id="verse-end"
-              type="number"
-              min={1}
-              placeholder="17"
-              value={verseEnd}
-              onChange={(e) => setVerseEnd(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="minutes">Minutes studied</Label>
+            <Label htmlFor="minutes">Minutes studied (optional)</Label>
             <Input
               id="minutes"
               type="number"
-              min={0}
+              min={1}
+              max={1440}
+              placeholder="Leave blank if unknown"
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
             />
           </div>
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="chapter-start">Chapters from</Label>
+            <Input
+              id="chapter-start"
+              type="number"
+              min={1}
+              max={chapterCount}
+              value={chapterStart}
+              onChange={(e) => {
+                setChapterStart(e.target.value);
+                if (Number(e.target.value) > Number(chapterEnd || 0)) setChapterEnd(e.target.value);
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="chapter-end">Chapters to</Label>
+            <Input
+              id="chapter-end"
+              type="number"
+              min={1}
+              max={chapterCount}
+              value={chapterEnd}
+              onChange={(e) => setChapterEnd(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {book} has {chapterCount} chapters. Reading one chapter? Use the same number twice.
+            </p>
+          </div>
+        </div>
+
 
         <div className="space-y-2">
           <Label htmlFor="studied-on">Date studied</Label>
