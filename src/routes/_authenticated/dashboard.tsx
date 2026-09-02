@@ -11,6 +11,8 @@ import { useProfile, useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import {
   currentStreak,
+  formatMinutes,
+  formatPassage,
   isThisMonth,
   lastNDays,
   longestStreak,
@@ -18,6 +20,7 @@ import {
   planDayNumber,
   todayKey,
 } from "@/lib/stats";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
