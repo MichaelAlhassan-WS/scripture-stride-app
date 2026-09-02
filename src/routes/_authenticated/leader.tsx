@@ -8,7 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { currentStreak, lastNDays, percent, todayKey } from "@/lib/stats";
+import {
+  chaptersRead,
+  currentStreak,
+  formatMinutes,
+  formatPassage,
+  lastNDays,
+  percent,
+  todayKey,
+} from "@/lib/stats";
+
 
 export const Route = createFileRoute("/_authenticated/leader")({
   head: () => ({
