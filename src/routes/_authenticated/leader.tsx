@@ -164,28 +164,52 @@ function LeaderPage() {
 
           <div className="mt-4 divide-y divide-border">
             {entry.stats.map((member) => (
-              <div key={member.userId} className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="text-sm font-medium">{member.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Last studied {member.lastStudied ?? "never"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Badge variant="secondary">
-                    <Flame className="mr-1 size-3 text-accent" />
-                    {member.streak}d streak
-                  </Badge>
-                  <Badge variant="secondary">{member.weekDays}/7 days</Badge>
-                  {member.missedDays >= 3 ? (
-                    <Badge className="bg-accent-soft text-accent-foreground hover:bg-accent-soft">
-                      <AlertTriangle className="mr-1 size-3" />
-                      {member.missedDays} missed
+              <div key={member.userId} className="py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{member.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Last studied {member.lastStudied ?? "never"} · {member.chapters} chapters ·{" "}
+                      {formatMinutes(member.minutes)} total
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge variant="secondary">
+                      <Flame className="mr-1 size-3 text-accent" />
+                      {member.streak}d streak
                     </Badge>
-                  ) : null}
+                    <Badge variant="secondary">{member.weekDays}/7 days</Badge>
+                    {member.missedDays >= 3 ? (
+                      <Badge className="bg-accent-soft text-accent-foreground hover:bg-accent-soft">
+                        <AlertTriangle className="mr-1 size-3" />
+                        {member.missedDays} missed
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
+
+                {member.recent.length ? (
+                  <ul className="mt-2 space-y-1 rounded-lg bg-secondary/50 px-3 py-2">
+                    {member.recent.map((log, i) => (
+                      <li key={`${member.userId}-${i}`} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{formatPassage(log)}</span>
+                        {" · "}
+                        {formatMinutes(log.minutes)}
+                        {" · "}
+                        {log.studied_on}
+                        {log.source === "in_app" ? " · in app" : ""}
+                        {log.reflection ? (
+                          <span className="mt-0.5 block line-clamp-2 italic">{log.reflection}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">No study recorded yet.</p>
+                )}
               </div>
             ))}
+
           </div>
         </section>
       ))}
