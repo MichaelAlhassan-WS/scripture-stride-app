@@ -236,41 +236,20 @@ function DashboardPage() {
       </section>
 
       <section className="surface-card p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg text-foreground">Recent activity</h2>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/log-study">Log study</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <LogRangeFilter value={range} onChange={setRange} />
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/log-study">Log study</Link>
+            </Button>
+          </div>
         </div>
-        <div className="mt-4 divide-y divide-border">
-          {(logs.data ?? []).slice(0, 8).map((log) => (
-            <div key={log.id} className="flex items-start justify-between gap-3 py-3">
-              <div>
-                <p className="text-sm font-medium">{formatPassage(log)}</p>
-                {log.reflection ? (
-                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                    {log.reflection}
-                  </p>
-                ) : null}
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-xs text-muted-foreground">{log.studied_on}</p>
-                <p className="text-xs text-muted-foreground">
-                  {log.minutes
-                    ? formatMinutes(log.minutes)
-                    : log.source === "in_app"
-                      ? "In app"
-                      : "—"}
-                </p>
-              </div>
-            </div>
-
-          ))}
-          {!logs.isLoading && (logs.data ?? []).length === 0 ? (
-            <p className="py-6 text-sm text-muted-foreground">
-              No study logged yet. Open the Bible reader or log a study session to begin your streak.
-            </p>
-          ) : null}
+        <div className="mt-4">
+          <SessionLogList
+            sessions={sessions}
+            emptyText="No study logged in this period. Open the Bible reader or log a study session to begin your streak."
+          />
         </div>
       </section>
     </div>
