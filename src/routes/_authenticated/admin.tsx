@@ -88,7 +88,7 @@ function AdminPage() {
           .from("study_logs")
           .select("user_id, studied_on, book, chapter, chapter_end, minutes, reflection, source")
           .order("studied_on", { ascending: false })
-          .limit(200),
+          .limit(1000),
       ]);
       return {
         profiles: profiles.data ?? [],
