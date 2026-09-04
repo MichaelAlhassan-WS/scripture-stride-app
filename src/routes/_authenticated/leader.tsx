@@ -119,11 +119,13 @@ function LeaderPage() {
   });
 
 
+  const [range, setRange] = useState<RangeKey>("month");
   const groups = overview.data ?? [];
   const totalMembers = groups.reduce((sum, g) => sum + g.stats.length, 0);
   const avgRate = groups.length
     ? Math.round(groups.reduce((sum, g) => sum + g.completionRate, 0) / groups.length)
     : 0;
+
 
   return (
     <div className="space-y-6">
