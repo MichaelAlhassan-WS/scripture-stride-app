@@ -99,11 +99,10 @@ function LeaderPage() {
             missedDays: 7 - weekDays,
             doneToday: dates.includes(todayKey()),
             lastStudied: [...dates].sort().pop() ?? null,
-            chapters: memberLogs.reduce((sum, l) => sum + chaptersRead(l), 0),
-            minutes: memberLogs.reduce((sum, l) => sum + (l.minutes ?? 0), 0),
-            recent: memberLogs.slice(0, 5),
+            logs: memberLogs,
           };
         });
+
 
         groups.push({
           group,
