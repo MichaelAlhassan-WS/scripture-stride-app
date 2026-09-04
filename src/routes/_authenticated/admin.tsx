@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { LogRangeFilter } from "@/components/LogRangeFilter";
 import { RoleGate } from "@/components/RoleGate";
+import { SessionLogList } from "@/components/SessionLogList";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +27,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useProfile, useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { chaptersRead, formatMinutes, formatPassage, todayKey } from "@/lib/stats";
+import {
+  filterByRange,
+  groupSessions,
+  type RangeKey,
+  type RawLog,
+} from "@/lib/log-groups";
+import { formatMinutes, todayKey } from "@/lib/stats";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -57,6 +70,7 @@ function AdminPage() {
   const [assignGroup, setAssignGroup] = useState("");
   const [assignUser, setAssignUser] = useState("");
   const [assignLeader, setAssignLeader] = useState("false");
+  const [range, setRange] = useState<RangeKey>("month");
 
   const isAdmin = Boolean(profileData?.isAdmin);
 
@@ -462,5 +476,40 @@ function AdminPage() {
       </section>
 
     </div>
+  );
+}
+
+function AdminMemberLogs({
+  name,
+  logs,
+  range,
+}: {
+  name: string;
+  logs: RawLog[];
+  range: RangeKey;
+}) {
+  const [open, setOpen] = useState(false);
+  const sessions = groupSessions(filterByRange(logs, range));
+  const chapters = sessions.reduce((sum, s) => sum + s.chapters, 0);
+  const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="py-3">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 text-left">
+        <ChevronDown
+          className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{name}</p>
+          <p className="text-xs text-muted-foreground">
+            {sessions.length} session{sessions.length === 1 ? "" : "s"} · {chapters} chapters ·{" "}
+            {formatMinutes(minutes)}
+          </p>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2">
+        <SessionLogList sessions={sessions} emptyText="No study recorded in this period." />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
