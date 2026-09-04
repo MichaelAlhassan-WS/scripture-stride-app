@@ -1,22 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Flame } from "lucide-react";
+import { AlertTriangle, ChevronDown, Flame } from "lucide-react";
+import { useState } from "react";
 
 import { RoleGate } from "@/components/RoleGate";
+import { SessionLogList } from "@/components/SessionLogList";
+import { LogRangeFilter } from "@/components/LogRangeFilter";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
+import { filterByRange, groupSessions, type RangeKey } from "@/lib/log-groups";
 import {
-  chaptersRead,
   currentStreak,
   formatMinutes,
-  formatPassage,
   lastNDays,
   percent,
   todayKey,
 } from "@/lib/stats";
+
 
 
 export const Route = createFileRoute("/_authenticated/leader")({
