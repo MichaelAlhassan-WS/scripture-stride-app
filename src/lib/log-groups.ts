@@ -19,7 +19,7 @@ export type RawLog = {
 
 export type SessionLog = {
   key: string;
-  userId?: string;
+  userId?: string | undefined;
   book: string;
   chapterStart: number;
   chapterEnd: number;
