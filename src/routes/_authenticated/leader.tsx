@@ -148,6 +148,21 @@ function LeaderPage() {
         />
       </div>
 
+      <div className="surface-card flex flex-wrap items-center justify-between gap-3 p-4">
+        <p className="text-sm text-muted-foreground">
+          Showing reading logs for <span className="font-medium text-foreground">{
+            range === "today"
+              ? "today"
+              : range === "week"
+                ? "this week"
+                : range === "month"
+                  ? "this month"
+                  : "all time"
+          }</span>. Older months stay archived below each member.
+        </p>
+        <LogRangeFilter value={range} onChange={setRange} />
+      </div>
+
       {groups.length === 0 ? (
         <div className="surface-card p-6 text-sm text-muted-foreground">
           You have not been assigned a group to lead yet.
@@ -173,55 +188,74 @@ function LeaderPage() {
 
           <div className="mt-4 divide-y divide-border">
             {entry.stats.map((member) => (
-              <div key={member.userId} className="py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">{member.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Last studied {member.lastStudied ?? "never"} · {member.chapters} chapters ·{" "}
-                      {formatMinutes(member.minutes)} total
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Badge variant="secondary">
-                      <Flame className="mr-1 size-3 text-accent" />
-                      {member.streak}d streak
-                    </Badge>
-                    <Badge variant="secondary">{member.weekDays}/7 days</Badge>
-                    {member.missedDays >= 3 ? (
-                      <Badge className="bg-accent-soft text-accent-foreground hover:bg-accent-soft">
-                        <AlertTriangle className="mr-1 size-3" />
-                        {member.missedDays} missed
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-
-                {member.recent.length ? (
-                  <ul className="mt-2 space-y-1 rounded-lg bg-secondary/50 px-3 py-2">
-                    {member.recent.map((log, i) => (
-                      <li key={`${member.userId}-${i}`} className="text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">{formatPassage(log)}</span>
-                        {" · "}
-                        {formatMinutes(log.minutes)}
-                        {" · "}
-                        {log.studied_on}
-                        {log.source === "in_app" ? " · in app" : ""}
-                        {log.reflection ? (
-                          <span className="mt-0.5 block line-clamp-2 italic">{log.reflection}</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-xs text-muted-foreground">No study recorded yet.</p>
-                )}
-              </div>
+              <MemberRow key={member.userId} member={member} range={range} />
             ))}
-
           </div>
         </section>
       ))}
     </div>
   );
 }
+
+type MemberStat = {
+  userId: string;
+  name: string;
+  streak: number;
+  weekDays: number;
+  missedDays: number;
+  doneToday: boolean;
+  lastStudied: string | null;
+  logs: {
+    book: string;
+    chapter: number;
+    chapter_end: number | null;
+    minutes: number | null;
+    reflection: string;
+    source: string;
+    studied_on: string;
+    user_id: string;
+  }[];
+};
+
+function MemberRow({ member, range }: { member: MemberStat; range: RangeKey }) {
+  const [open, setOpen] = useState(false);
+  const sessions = groupSessions(filterByRange(member.logs, range));
+  const chapters = sessions.reduce((sum, s) => sum + s.chapters, 0);
+  const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <CollapsibleTrigger className="flex min-w-0 items-center gap-2 text-left">
+          <ChevronDown
+            className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{member.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {sessions.length} session{sessions.length === 1 ? "" : "s"} · {chapters} chapters ·{" "}
+              {formatMinutes(minutes)} · last studied {member.lastStudied ?? "never"}
+            </p>
+          </div>
+        </CollapsibleTrigger>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Badge variant="secondary">
+            <Flame className="mr-1 size-3 text-accent" />
+            {member.streak}d streak
+          </Badge>
+          <Badge variant="secondary">{member.weekDays}/7 days</Badge>
+          {member.missedDays >= 3 ? (
+            <Badge className="bg-accent-soft text-accent-foreground hover:bg-accent-soft">
+              <AlertTriangle className="mr-1 size-3" />
+              {member.missedDays} missed
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+      <CollapsibleContent className="mt-2">
+        <SessionLogList sessions={sessions} emptyText="No study recorded in this period." />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
