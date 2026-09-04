@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { LogRangeFilter } from "@/components/LogRangeFilter";
 import { RoleGate } from "@/components/RoleGate";
+import { SessionLogList } from "@/components/SessionLogList";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +27,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useProfile, useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { chaptersRead, formatMinutes, formatPassage, todayKey } from "@/lib/stats";
+import {
+  filterByRange,
+  groupSessions,
+  type RangeKey,
+  type RawLog,
+} from "@/lib/log-groups";
+import { formatMinutes, todayKey } from "@/lib/stats";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -57,6 +70,7 @@ function AdminPage() {
   const [assignGroup, setAssignGroup] = useState("");
   const [assignUser, setAssignUser] = useState("");
   const [assignLeader, setAssignLeader] = useState("false");
+  const [range, setRange] = useState<RangeKey>("month");
 
   const isAdmin = Boolean(profileData?.isAdmin);
 
@@ -74,7 +88,7 @@ function AdminPage() {
           .from("study_logs")
           .select("user_id, studied_on, book, chapter, chapter_end, minutes, reflection, source")
           .order("studied_on", { ascending: false })
-          .limit(200),
+          .limit(1000),
       ]);
       return {
         profiles: profiles.data ?? [],
@@ -212,51 +226,34 @@ function AdminPage() {
       </div>
 
       <section className="surface-card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg">Reading activity report</h2>
-          <p className="text-sm text-muted-foreground">
-            {(overview?.logs ?? []).reduce((sum, l) => sum + chaptersRead(l), 0)} chapters ·{" "}
-            {formatMinutes((overview?.logs ?? []).reduce((sum, l) => sum + (l.minutes ?? 0), 0))}{" "}
-            recorded
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg">Reading activity report</h2>
+            <p className="text-xs text-muted-foreground">
+              Grouped by reading session. Expand a member to see monthly summaries and details.
+            </p>
+          </div>
+          <LogRangeFilter value={range} onChange={setRange} />
         </div>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="py-2 pr-3 font-medium">Member</th>
-                <th className="py-2 pr-3 font-medium">Passage</th>
-                <th className="py-2 pr-3 font-medium">Chapters</th>
-                <th className="py-2 pr-3 font-medium">Time</th>
-                <th className="py-2 pr-3 font-medium">Date</th>
-                <th className="py-2 font-medium">Reflection</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(overview?.logs ?? []).slice(0, 50).map((log, i) => {
-                const profile = (overview?.profiles ?? []).find((p) => p.id === log.user_id);
-                return (
-                  <tr key={`${log.user_id}-${i}`}>
-                    <td className="py-2 pr-3">{profile?.full_name || profile?.email || "Member"}</td>
-                    <td className="py-2 pr-3 font-medium">{formatPassage(log)}</td>
-                    <td className="py-2 pr-3">{chaptersRead(log)}</td>
-                    <td className="py-2 pr-3">{formatMinutes(log.minutes)}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap">{log.studied_on}</td>
-                    <td className="max-w-xs py-2">
-                      <span className="line-clamp-2 text-muted-foreground">
-                        {log.reflection || "—"}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mt-4 divide-y divide-border">
+          {(overview?.profiles ?? []).map((profile) => {
+            const memberLogs = (overview?.logs ?? []).filter((l) => l.user_id === profile.id);
+            if (!memberLogs.length) return null;
+            return (
+              <AdminMemberLogs
+                key={profile.id}
+                name={profile.full_name || profile.email || "Member"}
+                logs={memberLogs}
+                range={range}
+              />
+            );
+          })}
           {(overview?.logs ?? []).length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No study logged yet.</p>
           ) : null}
         </div>
       </section>
+
 
       <div className="grid gap-4 lg:grid-cols-2">
 
@@ -479,5 +476,40 @@ function AdminPage() {
       </section>
 
     </div>
+  );
+}
+
+function AdminMemberLogs({
+  name,
+  logs,
+  range,
+}: {
+  name: string;
+  logs: RawLog[];
+  range: RangeKey;
+}) {
+  const [open, setOpen] = useState(false);
+  const sessions = groupSessions(filterByRange(logs, range));
+  const chapters = sessions.reduce((sum, s) => sum + s.chapters, 0);
+  const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="py-3">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 text-left">
+        <ChevronDown
+          className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{name}</p>
+          <p className="text-xs text-muted-foreground">
+            {sessions.length} session{sessions.length === 1 ? "" : "s"} · {chapters} chapters ·{" "}
+            {formatMinutes(minutes)}
+          </p>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2">
+        <SessionLogList sessions={sessions} emptyText="No study recorded in this period." />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
