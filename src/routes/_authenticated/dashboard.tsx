@@ -1,18 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { BookMarked, CalendarCheck, CheckCircle2, Flame, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
+import { LogRangeFilter } from "@/components/LogRangeFilter";
+import { SessionLogList } from "@/components/SessionLogList";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useProfile, useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
+import { filterByRange, groupSessions, type RangeKey } from "@/lib/log-groups";
 import {
   currentStreak,
-  formatMinutes,
-  formatPassage,
   isThisMonth,
   lastNDays,
   longestStreak,
@@ -42,6 +44,7 @@ function DashboardPage() {
   const { data: profileData } = useProfile();
   const queryClient = useQueryClient();
   const userId = user?.id;
+  const [range, setRange] = useState<RangeKey>("month");
 
   const logs = useQuery({
     queryKey: ["my-logs", userId],
@@ -92,6 +95,7 @@ function DashboardPage() {
     },
   });
 
+  const sessions = groupSessions(filterByRange(logs.data ?? [], range));
   const dateKeys = (logs.data ?? []).map((l) => l.studied_on);
   const streak = currentStreak(dateKeys);
   const best = longestStreak(dateKeys);
