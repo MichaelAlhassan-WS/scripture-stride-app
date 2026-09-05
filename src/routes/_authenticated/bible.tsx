@@ -390,13 +390,21 @@ function BiblePage() {
               );
             })}
           </div>
-          <div className="mt-7 flex justify-between">
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button
               variant="outline"
               disabled={safeChapter <= 1}
               onClick={() => go(book, safeChapter - 1)}
             >
               Previous
+            </Button>
+            <Button
+              variant={marks.data?.completed ? "outline" : "default"}
+              disabled={markChapter.isPending}
+              onClick={() => markChapter.mutate()}
+            >
+              <CheckCircle2 className="mr-1 size-4" />
+              {marks.data?.completed ? "Completed — log again" : "Mark chapter completed"}
             </Button>
             <Button
               variant="outline"

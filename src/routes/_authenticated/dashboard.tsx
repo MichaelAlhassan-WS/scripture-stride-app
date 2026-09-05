@@ -233,8 +233,17 @@ function DashboardPage() {
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Current streak" value={`${streak}d`} icon={Flame} tone="gold" />
-        <StatCard label="Longest streak" value={`${best}d`} icon={Trophy} />
+        <StatCard
+          label="Current streak"
+          value={`${streak} ${streak === 1 ? "day" : "days"}`}
+          icon={Flame}
+          tone="gold"
+        />
+        <StatCard
+          label="Longest streak"
+          value={`${best} ${best === 1 ? "day" : "days"}`}
+          icon={Trophy}
+        />
         <StatCard label="Total sessions" value={logs.data?.length ?? 0} icon={CalendarCheck} />
         <StatCard label="Chapters this month" value={monthChapters} icon={BookMarked} />
       </section>
