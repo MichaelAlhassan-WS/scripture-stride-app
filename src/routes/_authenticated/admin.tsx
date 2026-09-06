@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { LogRangeFilter } from "@/components/LogRangeFilter";
+import { PlanDaysManager } from "@/components/PlanDaysManager";
+
 import { RoleGate } from "@/components/RoleGate";
 import { SessionLogList } from "@/components/SessionLogList";
 import { StatCard } from "@/components/StatCard";
@@ -328,6 +330,9 @@ function AdminPage() {
           </Button>
         </section>
       </div>
+
+      <PlanDaysManager plans={overview?.plans ?? []} />
+
 
       <section className="surface-card space-y-3 p-5">
         <h2 className="text-lg">Assign a member to a group</h2>
