@@ -329,6 +329,9 @@ function AdminPage() {
         </section>
       </div>
 
+      <PlanDaysManager plans={overview?.plans ?? []} />
+
+
       <section className="surface-card space-y-3 p-5">
         <h2 className="text-lg">Assign a member to a group</h2>
         <div className="grid gap-3 sm:grid-cols-4">
