@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { LogRangeFilter } from "@/components/LogRangeFilter";
+import { PlanDaysManager } from "@/components/PlanDaysManager";
+
 import { RoleGate } from "@/components/RoleGate";
 import { SessionLogList } from "@/components/SessionLogList";
 import { StatCard } from "@/components/StatCard";
