@@ -1,31 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, ChevronDown, Flame } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { RoleGate } from "@/components/RoleGate";
 import { SessionLogList } from "@/components/SessionLogList";
 import { LogRangeFilter } from "@/components/LogRangeFilter";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { filterByRange, groupSessions, type RangeKey } from "@/lib/log-groups";
-import {
-  currentStreak,
-  formatMinutes,
-  lastNDays,
-  percent,
-  todayKey,
-} from "@/lib/stats";
-
-
+import { currentStreak, formatMinutes, lastNDays, percent, todayKey } from "@/lib/stats";
 
 export const Route = createFileRoute("/_authenticated/leader")({
   head: () => ({
@@ -50,6 +47,7 @@ export const Route = createFileRoute("/_authenticated/leader")({
 function LeaderPage() {
   const { user } = useSession();
   const userId = user?.id;
+  const queryClient = useQueryClient();
 
   const overview = useQuery({
     queryKey: ["leader-groups", userId],
@@ -68,10 +66,7 @@ function LeaderPage() {
         const group = row.groups;
         if (!group) continue;
         const [membersRes, logsRes] = await Promise.all([
-          supabase
-            .from("group_members")
-            .select("user_id")
-            .eq("group_id", group.id),
+          supabase.from("group_members").select("user_id, is_leader").eq("group_id", group.id),
           supabase
             .from("study_logs")
             .select("user_id, studied_on, book, chapter, chapter_end, minutes, reflection, source")
@@ -93,6 +88,7 @@ function LeaderPage() {
           const weekDays = week.filter((d) => dates.includes(d)).length;
           return {
             userId: member.user_id,
+            isLeader: member.is_leader,
             name: profile?.full_name || profile?.email || "Member",
             streak: currentStreak(dates),
             weekDays,
@@ -102,7 +98,6 @@ function LeaderPage() {
             logs: memberLogs,
           };
         });
-
 
         groups.push({
           group,
@@ -118,6 +113,41 @@ function LeaderPage() {
     },
   });
 
+  const manageGroupMember = useMutation({
+    mutationFn: async ({
+      action,
+      groupId,
+      memberId,
+      targetGroupId,
+    }: {
+      action: "promote" | "demote" | "remove" | "move";
+      groupId: string;
+      memberId: string;
+      targetGroupId?: string;
+    }) => {
+      const { error } = await supabase.rpc("manage_group_member", {
+        _action: action,
+        _group_id: groupId,
+        _user_id: memberId,
+        _target_group_id: targetGroupId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        variables.action === "remove"
+          ? "Member removed from group"
+          : variables.action === "move"
+            ? "Member moved to the new group"
+            : variables.action === "promote"
+              ? "Member promoted to group leader"
+              : "Member changed to group member",
+      );
+      queryClient.invalidateQueries({ queryKey: ["leader-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const [range, setRange] = useState<RangeKey>("month");
   const groups = overview.data ?? [];
@@ -125,7 +155,6 @@ function LeaderPage() {
   const avgRate = groups.length
     ? Math.round(groups.reduce((sum, g) => sum + g.completionRate, 0) / groups.length)
     : 0;
-
 
   return (
     <div className="space-y-6">
@@ -150,15 +179,17 @@ function LeaderPage() {
 
       <div className="surface-card flex flex-wrap items-center justify-between gap-3 p-4">
         <p className="text-sm text-muted-foreground">
-          Showing reading logs for <span className="font-medium text-foreground">{
-            range === "today"
+          Showing reading logs for{" "}
+          <span className="font-medium text-foreground">
+            {range === "today"
               ? "today"
               : range === "week"
                 ? "this week"
                 : range === "month"
                   ? "this month"
-                  : "all time"
-          }</span>. Older months stay archived below each member.
+                  : "all time"}
+          </span>
+          . Older months stay archived below each member.
         </p>
         <LogRangeFilter value={range} onChange={setRange} />
       </div>
@@ -188,7 +219,22 @@ function LeaderPage() {
 
           <div className="mt-4 divide-y divide-border">
             {entry.stats.map((member) => (
-              <MemberRow key={member.userId} member={member} range={range} />
+              <MemberRow
+                key={member.userId}
+                member={member}
+                range={range}
+                groupId={entry.group.id}
+                groups={groups.map((groupEntry) => groupEntry.group)}
+                pending={manageGroupMember.isPending}
+                onAction={(action, targetGroupId) =>
+                  manageGroupMember.mutate({
+                    action,
+                    groupId: entry.group.id,
+                    memberId: member.userId,
+                    targetGroupId,
+                  })
+                }
+              />
             ))}
           </div>
         </section>
@@ -199,6 +245,7 @@ function LeaderPage() {
 
 type MemberStat = {
   userId: string;
+  isLeader: boolean;
   name: string;
   streak: number;
   weekDays: number;
@@ -217,9 +264,25 @@ type MemberStat = {
   }[];
 };
 
-function MemberRow({ member, range }: { member: MemberStat; range: RangeKey }) {
+function MemberRow({
+  member,
+  range,
+  groupId,
+  groups,
+  pending,
+  onAction,
+}: {
+  member: MemberStat;
+  range: RangeKey;
+  groupId: string;
+  groups: { id: string; name: string }[];
+  pending: boolean;
+  onAction: (action: "promote" | "demote" | "remove" | "move", targetGroupId?: string) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [targetGroupId, setTargetGroupId] = useState("");
   const sessions = groupSessions(filterByRange(member.logs, range));
+  const otherGroups = groups.filter((group) => group.id !== groupId);
   const chapters = sessions.reduce((sum, s) => sum + s.chapters, 0);
   const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
 
@@ -250,6 +313,50 @@ function MemberRow({ member, range }: { member: MemberStat; range: RangeKey }) {
               {member.missedDays} missed
             </Badge>
           ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => onAction(member.isLeader ? "demote" : "promote")}
+          >
+            {member.isLeader ? "Make member" : "Make leader"}
+          </Button>
+          <Select value={targetGroupId} onValueChange={setTargetGroupId}>
+            <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectValue placeholder="Move to…" />
+            </SelectTrigger>
+            <SelectContent>
+              {otherGroups.map((group) => (
+                <SelectItem key={group.id} value={group.id}>
+                  {group.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={pending || !targetGroupId}
+            onClick={() => {
+              onAction("move", targetGroupId);
+              setTargetGroupId("");
+            }}
+          >
+            Move
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            disabled={pending}
+            onClick={() => {
+              if (window.confirm(`Remove ${member.name} from this group?`)) {
+                onAction("remove");
+              }
+            }}
+          >
+            Remove
+          </Button>
         </div>
       </div>
       <CollapsibleContent className="mt-2">
@@ -258,4 +365,3 @@ function MemberRow({ member, range }: { member: MemberStat; range: RangeKey }) {
     </Collapsible>
   );
 }
-

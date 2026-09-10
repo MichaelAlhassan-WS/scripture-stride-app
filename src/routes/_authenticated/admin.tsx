@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, ChevronDown, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Plus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -11,11 +11,7 @@ import { RoleGate } from "@/components/RoleGate";
 import { SessionLogList } from "@/components/SessionLogList";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,12 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useProfile, useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  filterByRange,
-  groupSessions,
-  type RangeKey,
-  type RawLog,
-} from "@/lib/log-groups";
+import { filterByRange, groupSessions, type RangeKey, type RawLog } from "@/lib/log-groups";
 import { formatMinutes, todayKey } from "@/lib/stats";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -177,24 +168,28 @@ function AdminPage() {
   });
 
   const setRole = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "leader" | "member" }) => {
+    mutationFn: async ({
+      userId,
+      role,
+    }: {
+      userId: string;
+      role: "admin" | "leader" | "member";
+    }) => {
       const { error: delError } = await supabase
         .from("user_roles")
         .delete()
         .eq("user_id", userId)
         .in("role", ["admin", "leader"]);
       if (delError) throw delError;
-      const { error } = await supabase
-        .from("user_roles")
-        .upsert(
-          role === "member"
-            ? { user_id: userId, role: "member" as const }
-            : [
-                { user_id: userId, role: "member" as const },
-                { user_id: userId, role },
-              ],
-          { onConflict: "user_id,role", ignoreDuplicates: true },
-        );
+      const { error } = await supabase.from("user_roles").upsert(
+        role === "member"
+          ? { user_id: userId, role: "member" as const }
+          : [
+              { user_id: userId, role: "member" as const },
+              { user_id: userId, role },
+            ],
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -205,6 +200,54 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const manageGroupMember = useMutation({
+    mutationFn: async ({
+      action,
+      groupId,
+      userId,
+      targetGroupId,
+    }: {
+      action: "promote" | "demote" | "remove" | "move";
+      groupId: string;
+      userId: string;
+      targetGroupId?: string;
+    }) => {
+      const { error } = await supabase.rpc("manage_group_member", {
+        _action: action,
+        _group_id: groupId,
+        _user_id: userId,
+        _target_group_id: targetGroupId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        variables.action === "promote"
+          ? "Member promoted to group leader"
+          : variables.action === "demote"
+            ? "Member changed to group member"
+            : variables.action === "remove"
+              ? "Member removed from group"
+              : "Member moved to the new group",
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["leader-groups"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("User account deleted");
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const overview = data.data;
   const activeToday = new Set(
@@ -256,9 +299,7 @@ function AdminPage() {
         </div>
       </section>
 
-
       <div className="grid gap-4 lg:grid-cols-2">
-
         <section className="surface-card space-y-3 p-5">
           <h2 className="text-lg">Create a group</h2>
           <div className="space-y-1.5">
@@ -333,7 +374,6 @@ function AdminPage() {
 
       <PlanDaysManager plans={overview?.plans ?? []} />
 
-
       <section className="surface-card space-y-3 p-5">
         <h2 className="text-lg">Assign a member to a group</h2>
         <div className="grid gap-3 sm:grid-cols-4">
@@ -396,12 +436,41 @@ function AdminPage() {
                 key={group.id}
                 className="flex flex-wrap items-center justify-between gap-3 py-3"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium">{group.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {groupMembers.length} members · {leaders} leader{leaders === 1 ? "" : "s"} ·{" "}
                     {group.visibility_mode} mode
                   </p>
+                  <div className="mt-3 space-y-2">
+                    {groupMembers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No members assigned.</p>
+                    ) : (
+                      groupMembers.map((membership) => {
+                        const member = overview?.profiles.find((p) => p.id === membership.user_id);
+                        if (!member) return null;
+                        return (
+                          <GroupMemberControls
+                            key={membership.id}
+                            memberName={member.full_name || member.email || "Member"}
+                            isLeader={membership.is_leader}
+                            groupId={group.id}
+                            userId={member.id}
+                            groups={overview?.groups ?? []}
+                            pending={manageGroupMember.isPending}
+                            onAction={(action, targetGroupId) =>
+                              manageGroupMember.mutate({
+                                action,
+                                groupId: group.id,
+                                userId: member.id,
+                                targetGroupId,
+                              })
+                            }
+                          />
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
                 <div className="w-56">
                   <Select
@@ -420,6 +489,23 @@ function AdminPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Delete user account"
+                    disabled={deleteUser.isPending || p.id === user?.id}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete ${p.full_name || p.email || "this user"} permanently? This removes the account and its associated data.`,
+                        )
+                      ) {
+                        deleteUser.mutate(p.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
                 </div>
               </div>
             );
@@ -479,20 +565,86 @@ function AdminPage() {
           })}
         </div>
       </section>
-
     </div>
   );
 }
 
-function AdminMemberLogs({
-  name,
-  logs,
-  range,
-}: {
-  name: string;
-  logs: RawLog[];
-  range: RangeKey;
-}) {
+type GroupMemberControlsProps = {
+  memberName: string;
+  isLeader: boolean;
+  groupId: string;
+  userId: string;
+  groups: { id: string; name: string }[];
+  pending: boolean;
+  onAction: (action: "promote" | "demote" | "remove" | "move", targetGroupId?: string) => void;
+};
+
+function GroupMemberControls({
+  memberName,
+  isLeader,
+  groupId,
+  userId,
+  groups,
+  pending,
+  onAction,
+}: GroupMemberControlsProps) {
+  const [targetGroupId, setTargetGroupId] = useState("");
+  const otherGroups = groups.filter((group) => group.id !== groupId);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+      <span className="min-w-32 flex-1 text-xs font-medium">
+        {memberName} {isLeader ? "(Leader)" : ""}
+      </span>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={pending}
+        onClick={() => onAction(isLeader ? "demote" : "promote")}
+      >
+        {isLeader ? "Make member" : "Make leader"}
+      </Button>
+      <Select value={targetGroupId} onValueChange={setTargetGroupId}>
+        <SelectTrigger className="h-8 w-36 text-xs">
+          <SelectValue placeholder="Move to…" />
+        </SelectTrigger>
+        <SelectContent>
+          {otherGroups.map((group) => (
+            <SelectItem key={group.id} value={group.id}>
+              {group.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={pending || !targetGroupId}
+        onClick={() => {
+          onAction("move", targetGroupId);
+          setTargetGroupId("");
+        }}
+      >
+        Move
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-destructive hover:text-destructive"
+        disabled={pending}
+        onClick={() => {
+          if (window.confirm(`Remove ${memberName} from this group?`)) {
+            onAction("remove");
+          }
+        }}
+      >
+        Remove
+      </Button>
+    </div>
+  );
+}
+
+function AdminMemberLogs({ name, logs, range }: { name: string; logs: RawLog[]; range: RangeKey }) {
   const [open, setOpen] = useState(false);
   const sessions = groupSessions(filterByRange(logs, range));
   const chapters = sessions.reduce((sum, s) => sum + s.chapters, 0);
