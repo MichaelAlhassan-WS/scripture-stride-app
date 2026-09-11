@@ -4,6 +4,7 @@ import { AlertTriangle, ChevronDown, Flame } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { GroupMemberActions } from "@/components/GroupMemberActions";
 import { RoleGate } from "@/components/RoleGate";
 import { SessionLogList } from "@/components/SessionLogList";
 import { LogRangeFilter } from "@/components/LogRangeFilter";
@@ -11,14 +12,6 @@ import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { filterByRange, groupSessions, type RangeKey } from "@/lib/log-groups";
@@ -280,9 +273,7 @@ function MemberRow({
   onAction: (action: "promote" | "demote" | "remove" | "move", targetGroupId?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [targetGroupId, setTargetGroupId] = useState("");
   const sessions = groupSessions(filterByRange(member.logs, range));
-  const otherGroups = groups.filter((group) => group.id !== groupId);
   const chapters = sessions.reduce((sum, s) => sum + s.chapters, 0);
   const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
 
@@ -313,50 +304,14 @@ function MemberRow({
               {member.missedDays} missed
             </Badge>
           ) : null}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={pending}
-            onClick={() => onAction(member.isLeader ? "demote" : "promote")}
-          >
-            {member.isLeader ? "Make member" : "Make leader"}
-          </Button>
-          <Select value={targetGroupId} onValueChange={setTargetGroupId}>
-            <SelectTrigger className="h-8 w-32 text-xs">
-              <SelectValue placeholder="Move to…" />
-            </SelectTrigger>
-            <SelectContent>
-              {otherGroups.map((group) => (
-                <SelectItem key={group.id} value={group.id}>
-                  {group.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={pending || !targetGroupId}
-            onClick={() => {
-              onAction("move", targetGroupId);
-              setTargetGroupId("");
-            }}
-          >
-            Move
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(`Remove ${member.name} from this group?`)) {
-                onAction("remove");
-              }
-            }}
-          >
-            Remove
-          </Button>
+          <GroupMemberActions
+            memberName={member.name}
+            isLeader={member.isLeader}
+            groupId={groupId}
+            groups={groups}
+            pending={pending}
+            onAction={onAction}
+          />
         </div>
       </div>
       <CollapsibleContent className="mt-2">

@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, ChevronDown, Plus, Trash2, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { LogRangeFilter } from "@/components/LogRangeFilter";
+import { DeleteUserButton } from "@/components/DeleteUserButton";
+import { GroupMemberActions } from "@/components/GroupMemberActions";
 import { PlanDaysManager } from "@/components/PlanDaysManager";
 
 import { RoleGate } from "@/components/RoleGate";
@@ -450,12 +452,11 @@ function AdminPage() {
                         const member = overview?.profiles.find((p) => p.id === membership.user_id);
                         if (!member) return null;
                         return (
-                          <GroupMemberControls
+                          <GroupMemberActions
                             key={membership.id}
                             memberName={member.full_name || member.email || "Member"}
                             isLeader={membership.is_leader}
                             groupId={group.id}
-                            userId={member.id}
                             groups={overview?.groups ?? []}
                             pending={manageGroupMember.isPending}
                             onAction={(action, targetGroupId) =>
@@ -489,23 +490,6 @@ function AdminPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Delete user account"
-                    disabled={deleteUser.isPending || p.id === user?.id}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Delete ${p.full_name || p.email || "this user"} permanently? This removes the account and its associated data.`,
-                        )
-                      ) {
-                        deleteUser.mutate(p.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
                 </div>
               </div>
             );
@@ -558,6 +542,23 @@ function AdminPage() {
                         <SelectItem value="admin">Administrator</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Delete user account"
+                      disabled={deleteUser.isPending || p.id === user?.id}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Delete ${p.full_name || p.email || "this user"} permanently? This removes the account and its associated data.`,
+                          )
+                        ) {
+                          deleteUser.mutate(p.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -565,81 +566,6 @@ function AdminPage() {
           })}
         </div>
       </section>
-    </div>
-  );
-}
-
-type GroupMemberControlsProps = {
-  memberName: string;
-  isLeader: boolean;
-  groupId: string;
-  userId: string;
-  groups: { id: string; name: string }[];
-  pending: boolean;
-  onAction: (action: "promote" | "demote" | "remove" | "move", targetGroupId?: string) => void;
-};
-
-function GroupMemberControls({
-  memberName,
-  isLeader,
-  groupId,
-  userId,
-  groups,
-  pending,
-  onAction,
-}: GroupMemberControlsProps) {
-  const [targetGroupId, setTargetGroupId] = useState("");
-  const otherGroups = groups.filter((group) => group.id !== groupId);
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-      <span className="min-w-32 flex-1 text-xs font-medium">
-        {memberName} {isLeader ? "(Leader)" : ""}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={pending}
-        onClick={() => onAction(isLeader ? "demote" : "promote")}
-      >
-        {isLeader ? "Make member" : "Make leader"}
-      </Button>
-      <Select value={targetGroupId} onValueChange={setTargetGroupId}>
-        <SelectTrigger className="h-8 w-36 text-xs">
-          <SelectValue placeholder="Move to…" />
-        </SelectTrigger>
-        <SelectContent>
-          {otherGroups.map((group) => (
-            <SelectItem key={group.id} value={group.id}>
-              {group.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        variant="secondary"
-        size="sm"
-        disabled={pending || !targetGroupId}
-        onClick={() => {
-          onAction("move", targetGroupId);
-          setTargetGroupId("");
-        }}
-      >
-        Move
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-destructive hover:text-destructive"
-        disabled={pending}
-        onClick={() => {
-          if (window.confirm(`Remove ${memberName} from this group?`)) {
-            onAction("remove");
-          }
-        }}
-      >
-        Remove
-      </Button>
     </div>
   );
 }
