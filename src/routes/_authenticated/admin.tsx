@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, ChevronDown, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Plus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -218,7 +218,7 @@ function AdminPage() {
         _action: action,
         _group_id: groupId,
         _user_id: userId,
-        _target_group_id: targetGroupId,
+        ...(targetGroupId ? { _target_group_id: targetGroupId } : {}),
       });
       if (error) throw error;
     },
@@ -464,7 +464,7 @@ function AdminPage() {
                                 action,
                                 groupId: group.id,
                                 userId: member.id,
-                                targetGroupId,
+                                ...(targetGroupId ? { targetGroupId } : {}),
                               })
                             }
                           />

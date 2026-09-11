@@ -122,7 +122,7 @@ function LeaderPage() {
         _action: action,
         _group_id: groupId,
         _user_id: memberId,
-        _target_group_id: targetGroupId,
+        ...(targetGroupId ? { _target_group_id: targetGroupId } : {}),
       });
       if (error) throw error;
     },
@@ -224,7 +224,7 @@ function LeaderPage() {
                     action,
                     groupId: entry.group.id,
                     memberId: member.userId,
-                    targetGroupId,
+                    ...(targetGroupId ? { targetGroupId } : {}),
                   })
                 }
               />
