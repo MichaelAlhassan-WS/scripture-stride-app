@@ -122,7 +122,7 @@ function LeaderPage() {
         _action: action,
         _group_id: groupId,
         _user_id: memberId,
-        ...(targetGroupId ? { _target_group_id: targetGroupId } : {}),
+        _target_group_id: targetGroupId ?? null,
       });
       if (error) throw error;
     },

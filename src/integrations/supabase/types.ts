@@ -414,7 +414,7 @@ export type Database = {
         Args: {
           _action: string;
           _group_id: string;
-          _target_group_id?: string;
+          _target_group_id?: string | null;
           _user_id: string;
         };
         Returns: undefined;
