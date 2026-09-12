@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { BookOpen, ChevronDown, Plus, Trash2, Users } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { toast } from "sonner";
 
 import { LogRangeFilter } from "@/components/LogRangeFilter";
@@ -209,28 +209,27 @@ function AdminPage() {
       userId,
       targetGroupId,
     }: {
-      action: "promote" | "demote" | "remove" | "move";
+      action: "remove" | "move";
       groupId: string;
       userId: string;
       targetGroupId?: string;
     }) => {
-      const { error } = await supabase.rpc("manage_group_member", {
+      const { data, error } = await supabase.rpc("manage_group_member", {
         _action: action,
         _group_id: groupId,
         _user_id: userId,
         _target_group_id: targetGroupId ?? null,
       });
       if (error) throw error;
+      if (data !== "success_remove" && data !== "success_move") {
+        throw new Error(`Group member action failed: ${data}`);
+      }
     },
     onSuccess: (_, variables) => {
       toast.success(
-        variables.action === "promote"
-          ? "Member promoted to group leader"
-          : variables.action === "demote"
-            ? "Member changed to group member"
-            : variables.action === "remove"
-              ? "Member removed from group"
-              : "Member moved to the new group",
+        variables.action === "remove"
+          ? "Member removed from group"
+          : "Member moved to the new group",
       );
       queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -428,72 +427,113 @@ function AdminPage() {
       </section>
 
       <section className="surface-card p-5">
-        <h2 className="text-lg">Groups</h2>
-        <div className="mt-3 divide-y divide-border">
-          {(overview?.groups ?? []).map((group) => {
-            const groupMembers = (overview?.members ?? []).filter((m) => m.group_id === group.id);
-            const leaders = groupMembers.filter((m) => m.is_leader).length;
-            return (
-              <div
-                key={group.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{group.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {groupMembers.length} members · {leaders} leader{leaders === 1 ? "" : "s"} ·{" "}
-                    {group.visibility_mode} mode
-                  </p>
-                  <div className="mt-3 space-y-2">
+        <h2 className="text-lg">Group members</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Move members between groups or remove them from a group. Account roles are managed below.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[680px] text-left text-sm">
+            <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-3 font-medium">Group</th>
+                <th className="px-3 py-3 font-medium">Member</th>
+                <th className="px-3 py-3 font-medium">Role</th>
+                <th className="px-3 py-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {(overview?.groups ?? []).map((group) => {
+                const groupMembers = (overview?.members ?? []).filter(
+                  (m) => m.group_id === group.id,
+                );
+                const leaders = groupMembers.filter((m) => m.is_leader).length;
+                return (
+                  <Fragment key={group.id}>
+                    <tr className="bg-muted/30">
+                      <td colSpan={4} className="px-3 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium">{group.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {groupMembers.length} members · {leaders} leader
+                              {leaders === 1 ? "" : "s"} · {group.visibility_mode} mode
+                            </p>
+                          </div>
+                          <div className="w-56">
+                            <Select
+                              value={group.plan_id ?? "none"}
+                              onValueChange={(planId) =>
+                                attachPlan.mutate({ groupId: group.id, planId })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Reading plan" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No plan</SelectItem>
+                                {(overview?.plans ?? []).map((plan) => (
+                                  <SelectItem key={plan.id} value={plan.id}>
+                                    {plan.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                     {groupMembers.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No members assigned.</p>
+                      <tr>
+                        <td colSpan={4} className="px-3 py-4 text-sm text-muted-foreground">
+                          No members assigned.
+                        </td>
+                      </tr>
                     ) : (
                       groupMembers.map((membership) => {
-                        const member = overview?.profiles.find((p) => p.id === membership.user_id);
+                        const member = overview?.profiles.find(
+                          (p) => p.id === membership.user_id,
+                        );
                         if (!member) return null;
                         return (
-                          <GroupMemberActions
-                            key={membership.id}
-                            memberName={member.full_name || member.email || "Member"}
-                            isLeader={membership.is_leader}
-                            groupId={group.id}
-                            groups={overview?.groups ?? []}
-                            pending={manageGroupMember.isPending}
-                            onAction={(action, targetGroupId) =>
-                              manageGroupMember.mutate({
-                                action,
-                                groupId: group.id,
-                                userId: member.id,
-                                ...(targetGroupId ? { targetGroupId } : {}),
-                              })
-                            }
-                          />
+                          <tr key={membership.id}>
+                            <td className="px-3 py-3 text-muted-foreground">{group.name}</td>
+                            <td className="px-3 py-3">
+                              <p className="font-medium">
+                                {member.full_name || member.email || "Member"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{member.email}</p>
+                            </td>
+                            <td className="px-3 py-3">
+                              <Badge variant={membership.is_leader ? "default" : "secondary"}>
+                                {membership.is_leader ? "Leader" : "Member"}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-3 text-right">
+                              <GroupMemberActions
+                                memberName={member.full_name || member.email || "Member"}
+                                isLeader={membership.is_leader}
+                                groupId={group.id}
+                                groups={overview?.groups ?? []}
+                                pending={manageGroupMember.isPending}
+                                onAction={(action, targetGroupId) =>
+                                  manageGroupMember.mutate({
+                                    action,
+                                    groupId: group.id,
+                                    userId: member.id,
+                                    ...(targetGroupId ? { targetGroupId } : {}),
+                                  })
+                                }
+                              />
+                            </td>
+                          </tr>
                         );
                       })
                     )}
-                  </div>
-                </div>
-                <div className="w-56">
-                  <Select
-                    value={group.plan_id ?? "none"}
-                    onValueChange={(planId) => attachPlan.mutate({ groupId: group.id, planId })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Reading plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No plan</SelectItem>
-                      {(overview?.plans ?? []).map((plan) => (
-                        <SelectItem key={plan.id} value={plan.id}>
-                          {plan.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            );
-          })}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
 

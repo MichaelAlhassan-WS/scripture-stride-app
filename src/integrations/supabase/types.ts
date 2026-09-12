@@ -417,7 +417,7 @@ export type Database = {
           _target_group_id?: string | null;
           _user_id: string;
         };
-        Returns: undefined;
+        Returns: string;
       };
     };
     Enums: {

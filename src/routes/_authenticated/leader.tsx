@@ -113,28 +113,27 @@ function LeaderPage() {
       memberId,
       targetGroupId,
     }: {
-      action: "promote" | "demote" | "remove" | "move";
+      action: "remove" | "move";
       groupId: string;
       memberId: string;
       targetGroupId?: string;
     }) => {
-      const { error } = await supabase.rpc("manage_group_member", {
+      const { data, error } = await supabase.rpc("manage_group_member", {
         _action: action,
         _group_id: groupId,
         _user_id: memberId,
         _target_group_id: targetGroupId ?? null,
       });
       if (error) throw error;
+      if (data !== "success_remove" && data !== "success_move") {
+        throw new Error(`Group member action failed: ${data}`);
+      }
     },
     onSuccess: (_, variables) => {
       toast.success(
         variables.action === "remove"
           ? "Member removed from group"
-          : variables.action === "move"
-            ? "Member moved to the new group"
-            : variables.action === "promote"
-              ? "Member promoted to group leader"
-              : "Member changed to group member",
+          : "Member moved to the new group",
       );
       queryClient.invalidateQueries({ queryKey: ["leader-groups"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -270,7 +269,7 @@ function MemberRow({
   groupId: string;
   groups: { id: string; name: string }[];
   pending: boolean;
-  onAction: (action: "promote" | "demote" | "remove" | "move", targetGroupId?: string) => void;
+  onAction: (action: "remove" | "move", targetGroupId?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const sessions = groupSessions(filterByRange(member.logs, range));

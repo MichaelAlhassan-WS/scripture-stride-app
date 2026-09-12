@@ -1,4 +1,4 @@
-import { ArrowRight, ShieldCheck, UserRoundCog, UserRoundMinus } from "lucide-react";
+import { ShieldCheck, UserRoundCog, UserRoundMinus } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type GroupMemberAction = "promote" | "demote" | "remove" | "move";
+export type GroupMemberAction = "remove" | "move";
 
 type GroupOption = { id: string; name: string };
 
@@ -106,9 +106,9 @@ export function GroupMemberActions({
                       <ShieldCheck className="size-4" />
                     </span>
                     <div>
-                      <p className="text-sm font-medium">Role in this group</p>
+                      <p className="text-sm font-medium">Current role in this group</p>
                       <p className="text-xs text-muted-foreground">
-                        This does not change the account’s global role.
+                        Change account-level roles from the administrator member table.
                       </p>
                     </div>
                   </div>
@@ -116,15 +116,6 @@ export function GroupMemberActions({
                     {isLeader ? "Leader" : "Member"}
                   </Badge>
                 </div>
-                <Button
-                  variant="secondary"
-                  className="w-full justify-between"
-                  disabled={pending}
-                  onClick={() => submit(isLeader ? "demote" : "promote")}
-                >
-                  {isLeader ? "Change to member" : "Promote to leader"}
-                  <ArrowRight className="size-4" />
-                </Button>
 
                 <div className="space-y-2">
                   <div>
